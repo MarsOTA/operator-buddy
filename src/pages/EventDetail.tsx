@@ -316,7 +316,36 @@ const EventDetail = () => {
             }));
 
             const handleCoverClick = () => {
-              addSlotToShift(shift.id);
+              // Importa e usa la funzione per calcolare il primo gap
+              import("@/lib/gapCalculation").then(({ getFirstGap }) => {
+                const firstGap = getFirstGap({
+                  shiftStart: shift.startTime,
+                  shiftEnd: shift.endTime,
+                  slots,
+                  slotTimes,
+                  slotKeyPrefix: `${shift.id}-`,
+                });
+                
+                if (firstGap) {
+                  // Aggiungi il nuovo slot
+                  addSlotToShift(shift.id);
+                  
+                  // Imposta i tempi del nuovo slot nel prossimo slot vuoto
+                  const newSlotIndex = shift.operatorIds.length; // L'indice del nuovo slot sarà la lunghezza attuale
+                  const newSlotKey = `${shift.id}-${newSlotIndex}`;
+                  
+                  setSlotTimes(prev => ({
+                    ...prev,
+                    [newSlotKey]: {
+                      start: firstGap.start,
+                      end: firstGap.end
+                    }
+                  }));
+                } else {
+                  // Fallback se non ci sono gap (non dovrebbe succedere)
+                  addSlotToShift(shift.id);
+                }
+              });
             };
             
             return (

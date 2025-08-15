@@ -48,11 +48,6 @@ export default function ShiftPlanningForm({ onSubmit, onReset }: ShiftPlanningFo
   });
 
   const values = form.watch();
-  const headerText = useMemo(() => {
-    return `Turno del ${fmtDate(values.date)} – dalle ${fmtTime(values.startTime)} – alle ${fmtTime(
-      values.endTime
-    )}`;
-  }, [values.date, values.startTime, values.endTime]);
 
   const handleSubmit = (v: FormValues) => {
     onSubmit(v);
@@ -72,21 +67,6 @@ export default function ShiftPlanningForm({ onSubmit, onReset }: ShiftPlanningFo
 
   return (
     <div className="rounded-xl border border-gray-200 shadow-sm overflow-hidden bg-white">
-      {/* Header stile mockup */}
-      <div className="flex items-center justify-between bg-muted/40 px-4 py-2">
-        <h3 className="text-emerald-700 font-semibold">{headerText}</h3>
-
-        <div className="flex items-center gap-3">
-          {values.activityType ? (
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-[13px] font-medium text-slate-700">
-              {values.activityType}
-            </span>
-          ) : null}
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[13px] font-semibold text-emerald-700">
-            {values.numOperators} operatore{values.numOperators === 1 ? "" : "i"}
-          </span>
-        </div>
-      </div>
 
       {/* Body form */}
       <div className="p-6">

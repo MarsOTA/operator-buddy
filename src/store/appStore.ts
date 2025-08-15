@@ -90,7 +90,7 @@ interface AppState {
   createShift: (data: Omit<Shift, "id" | "operatorIds"> & { operatorIds?: ID[] }) => Shift;
   assignOperators: (shiftId: ID, operatorIds: ID[]) => void;
   setOperatorSlot: (shiftId: ID, slotIndex: number, operatorId: ID) => void;
-  addSlotToShift: (shiftId: ID) => void;
+  addSlotToShift: (shiftId: ID, startTime?: string, endTime?: string) => void;
   removeOperator: (shiftId: ID, operatorId: ID) => void;
   replaceOperator: (shiftId: ID, oldOperatorId: ID, newOperatorId: ID) => void;
   setTeamLeader: (shiftId: ID, operatorId: ID) => void;
@@ -184,13 +184,23 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
-      addSlotToShift: (shiftId) => {
+      addSlotToShift: (shiftId, startTime?: string, endTime?: string) => {
         set((state) => ({
-          shifts: state.shifts.map((s) =>
-            s.id === shiftId
-              ? { ...s, operatorIds: [...s.operatorIds, ""], requiredOperators: s.requiredOperators + 1 }
-              : s
-          ),
+          shifts: state.shifts.map((s) => {
+            if (s.id !== shiftId) return s;
+            
+            const newSlot = "";
+            const newOperatorIds = [...s.operatorIds, newSlot];
+            
+            // Se sono stati forniti startTime e endTime, li aggiungiamo agli slotTimes
+            // Questo verrà gestito dal componente che chiama questa funzione
+            
+            return { 
+              ...s, 
+              operatorIds: newOperatorIds, 
+              requiredOperators: s.requiredOperators + 1 
+            };
+          }),
         }));
       },
 
