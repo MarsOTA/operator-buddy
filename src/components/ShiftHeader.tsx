@@ -7,7 +7,6 @@ type Shift = {
   date: string;
   startTime: string;
   endTime: string;
-  covered?: boolean;
 };
 
 type Slot = {
@@ -52,25 +51,27 @@ export default function ShiftHeader({
   }, [depsKey, shift.startTime, shift.endTime]);
 
   const allSlotsAssigned = slots.every((s) => !!s.operatorId);
-  const showCover = allSlotsAssigned && uncoveredMin > 0 && !shift.covered;
+  const showCover = allSlotsAssigned && uncoveredMin > 0;
 
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-2 border-b border-border">
       <h3 className="text-lg font-semibold">
         {`Turno del ${shift.date} ${shift.startTime} – ${shift.endTime}`}
       </h3>
       <div className="flex items-center gap-2">
-        {uncoveredMin <= 0 || shift.covered ? (
-          <span className="badge badge-success">OK</span>
+        {uncoveredMin <= 0 ? (
+          <span className="px-2 py-1 rounded bg-green-500 text-white text-sm">
+            Coperto
+          </span>
         ) : (
           <>
-            <span className="badge badge-warning">
-              {`⚠ ${formatHM(uncoveredMin)} scoperto`}
+            <span className="px-2 py-1 rounded bg-yellow-500 text-white text-sm">
+              ⚠ {formatHM(uncoveredMin)} scoperto
             </span>
             {showCover && (
               <button
                 type="button"
-                className="btn btn-success flex items-center gap-1"
+                className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
                 onClick={() => coverShift(shift.id)}
               >
                 + Copri
