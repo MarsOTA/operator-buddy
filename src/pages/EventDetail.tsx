@@ -327,8 +327,8 @@ const EventDetail = () => {
                 });
                 
                 if (firstGap) {
-                  // Aggiungi il nuovo slot
-                  addSlotToShift(shift.id);
+                  // Aggiungi il nuovo slot con i tempi del gap
+                  addSlotToShift(shift.id, firstGap.start, firstGap.end);
                   
                   // Imposta i tempi del nuovo slot nel prossimo slot vuoto
                   const newSlotIndex = shift.operatorIds.length; // L'indice del nuovo slot sarà la lunghezza attuale

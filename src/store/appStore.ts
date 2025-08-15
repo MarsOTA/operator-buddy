@@ -192,8 +192,14 @@ export const useAppStore = create<AppState>()(
             const newSlot = "";
             const newOperatorIds = [...s.operatorIds, newSlot];
             
-            // Se sono stati forniti startTime e endTime, li aggiungiamo agli slotTimes
-            // Questo verrà gestito dal componente che chiama questa funzione
+            // Creiamo il nuovo shift con i tempi predefiniti se forniti
+            const updatedShift = { 
+              ...s, 
+              operatorIds: newOperatorIds,
+              requiredOperators: s.requiredOperators + 1 
+            };
+            
+            return updatedShift;
             
             return { 
               ...s, 
