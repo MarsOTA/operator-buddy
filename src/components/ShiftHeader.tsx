@@ -1,48 +1,92 @@
 import React from "react";
 import { totalUncoveredMinutes, formatHM } from "@/lib/coverage";
-import { useAppStore, Shift, Slot } from "@/store/appStore";
-import { Button } from "@/components/ui/button";
+
+type Shift = {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+};
+
+type Slot = {
+  id?: string;
+  operatorId?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+};
 
 export default function ShiftHeader({
   shift,
+  slots = [], // fallback array vuoto
+  slotTimes,
+  onCover,
 }: {
   shift: Shift;
+  slots?: Slot[];
+  slotTimes?: Record<string, { start?: string; end?: string }>;
+  onCover: () => void;
 }) {
-  const coverShift = useAppStore((s) => s.coverShift);
+  // Chiave per aggiornamenti reattivi
+  const depsKey = React.useMemo(() => {
+    return (slots || [])
+      .map((slot, i) => {
+        const k = `${shift.id}-${i}`;
+        // 👇 Ordine di priorità corretto:
+        // 1. slotTimes (se presente)
+        // 2. slot.startTime / slot.endTime
+        // 3. shift.startTime / shift.endTime
+        const st =
+          slotTimes?.[k]?.start ??
+          (slot.startTime && slot.startTime !== "" ? slot.startTime : null) ??
+          shift.startTime;
+        const en =
+          slotTimes?.[k]?.end ??
+          (slot.endTime && slot.endTime !== "" ? slot.endTime : null) ??
+          shift.endTime;
+        return [slot.operatorId ?? "", st ?? "", en ?? ""].join("|");
+      })
+      .join("||");
+  }, [shift.id, shift.startTime, shift.endTime, slots, slotTimes]);
 
+  // Calcolo minuti scoperti
   const uncoveredMin = React.useMemo(() => {
     return totalUncoveredMinutes({
       shiftStart: shift.startTime,
       shiftEnd: shift.endTime,
-      slots: shift.slots,
+      slots: slots || [],
+      slotTimes,
       slotKeyPrefix: `${shift.id}-`,
     });
-  }, [shift]);
+  }, [depsKey, shift.startTime, shift.endTime]);
 
-  const allSlotsAssigned = shift.slots.every((s) => !!s.operatorId);
+  // Tutti gli slot assegnati?
+  const allSlotsAssigned =
+    (slots?.length ?? 0) > 0 && (slots || []).every((s) => !!s.operatorId);
   const showCover = allSlotsAssigned && uncoveredMin > 0;
 
   return (
     <div className="flex items-center justify-between py-2 border-b">
-      <h3 className="text-lg font-semibold">
+      <h3 className="text-base font-medium">
         Turno del {shift.date} {shift.startTime} – {shift.endTime}
       </h3>
       <div className="flex items-center gap-2">
         {uncoveredMin <= 0 ? (
-          <span className="text-green-600 font-medium">OK</span>
+          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">
+            OK
+          </span>
         ) : (
           <>
-            <span className="text-yellow-600 font-medium">
+            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
               ⚠ {formatHM(uncoveredMin)} scoperto
             </span>
             {showCover && (
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => coverShift(shift.id)}
+              <button
+                type="button"
+                className="px-3 py-1 text-sm font-semibold rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={onCover}
               >
                 + Copri
-              </Button>
+              </button>
             )}
           </>
         )}
