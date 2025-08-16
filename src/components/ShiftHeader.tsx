@@ -15,50 +15,6 @@ type Slot = {
   endTime?: string | null;
 };
 
-type SlotTimes = Record<string, { start?: string; end?: string }>;
-
-// util locali per non dipendere da altre export
-const toMin = (t?: string | null) => {
-  if (!t) return 0;
-  const [h, m] = t.split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
-};
-const mmToHHMM = (x: number) => {
-  const h = String(Math.floor(x / 60)).padStart(2, "0");
-  const m = String(x % 60).padStart(2, "0");
-  return `${h}:${m}`;
-};
-
-/** calcola il PRIMO buco reale (considera slotTimes come override) */
-function getFirstGap(
-  shift: Shift,
-  slots: Slot[],
-  slotTimes?: SlotTimes,
-  slotKeyPrefix = ""
-): { start: string; end: string } | null {
-  const S = toMin(shift.startTime);
-  const E = toMin(shift.endTime);
-
-  // intervalli effettivi (slotTimes > slot > shift)
-  const intervals: [number, number][] = (slots || [])
-    .map((s, i) => {
-      const key = `${slotKeyPrefix}${i}`;
-      const st = slotTimes?.[key]?.start ?? s.startTime ?? shift.startTime;
-      const en = slotTimes?.[key]?.end ?? s.endTime ?? shift.endTime;
-      return [Math.max(toMin(st), S), Math.min(toMin(en), E)] as [number, number];
-    })
-    .filter(([a, b]) => b > a)
-    .sort((a, b) => a[0] - b[0]);
-
-  let cursor = S;
-  for (const [st, en] of intervals) {
-    if (st > cursor) return { start: mmToHHMM(cursor), end: mmToHHMM(st) };
-    cursor = Math.max(cursor, en);
-  }
-  if (cursor < E) return { start: mmToHHMM(cursor), end: mmToHHMM(E) };
-  return null;
-}
-
 export default function ShiftHeader({
   shift,
   slots,
@@ -67,11 +23,10 @@ export default function ShiftHeader({
 }: {
   shift: Shift;
   slots: Slot[];
-  slotTimes?: SlotTimes;
-  // ora accetta opzionalmente il range del buco
-  onCover: (range?: { start: string; end: string }) => void;
+  slotTimes?: Record<string, { start?: string; end?: string }>;
+  onCover: () => void;
 }) {
-  // dipendenze per ricalcolo
+  // Chiave per aggiornamenti reattivi (considera anche eventuali override negli input per-slot)
   const depsKey = React.useMemo(
     () =>
       (slots || [])
@@ -85,26 +40,28 @@ export default function ShiftHeader({
     [shift.id, shift.startTime, shift.endTime, slots, slotTimes]
   );
 
-  // minuti scoperti totali (per badge)
+  // FIX: se esiste, usa l'ora di inizio del PRIMO slot come inizio "effettivo" del turno
+  //      (così il calcolo delle ore scoperte non parte forzatamente da shift.startTime)
+  const effectiveShiftStart = React.useMemo(() => {
+    const firstKey = `${shift.id}-0`;
+    return slotTimes?.[firstKey]?.start ?? shift.startTime;
+  }, [shift.id, shift.startTime, slotTimes]);
+
+  // Calcolo minuti scoperti (usa effectiveShiftStart)
   const uncoveredMin = React.useMemo(() => {
     return totalUncoveredMinutes({
-      shiftStart: shift.startTime,
+      shiftStart: effectiveShiftStart,
       shiftEnd: shift.endTime,
-      slots,
+      slots: slots || [],
       slotTimes,
       slotKeyPrefix: `${shift.id}-`,
     });
-  }, [depsKey, shift.startTime, shift.endTime]);
+  }, [depsKey, effectiveShiftStart, shift.endTime]);
 
-  // mostra "Copri" solo se tutti assegnati e rimangono minuti scoperti
-  const allAssigned = (slots?.length ?? 0) > 0 && (slots || []).every((s) => !!s.operatorId);
-  const showCover = allAssigned && uncoveredMin > 0;
-
-  // quando clicchi Copri calcolo qui il primo buco e lo passo al parent
-  const handleCoverClick = React.useCallback(() => {
-    const gap = getFirstGap(shift, slots || [], slotTimes, `${shift.id}-`);
-    onCover(gap || { start: shift.startTime, end: shift.endTime });
-  }, [shift, slots, slotTimes, onCover]);
+  // Tutti slot assegnati?
+  const allSlotsAssigned =
+    (slots?.length ?? 0) > 0 && (slots || []).every((s) => !!s.operatorId);
+  const showCover = allSlotsAssigned && uncoveredMin > 0;
 
   return (
     <div className="flex items-center justify-between py-2 border-b">
@@ -125,7 +82,7 @@ export default function ShiftHeader({
               <button
                 type="button"
                 className="px-3 py-1 text-sm font-semibold rounded bg-emerald-600 text-white hover:bg-emerald-700"
-                onClick={handleCoverClick}
+                onClick={onCover}
               >
                 + Copri
               </button>
