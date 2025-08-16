@@ -1,5 +1,6 @@
+// src/components/ShiftHeader.tsx
 import React from "react";
-import { totalUncoveredMinutes, formatHM } from "@/lib/coverage";
+import { totalUncoveredMinutes, formatHM } from "../lib/coverage";
 
 type Shift = {
   id: string;
@@ -26,10 +27,9 @@ export default function ShiftHeader({
   slotTimes?: Record<string, { start?: string; end?: string }>;
   onCover: () => void;
 }) {
-  // Chiave per aggiornamenti reattivi
   const depsKey = React.useMemo(
     () =>
-      slots
+      (slots || [])
         .map((slot, i) => {
           const k = `${shift.id}-${i}`;
           const st = slotTimes?.[k]?.start ?? slot.startTime ?? shift.startTime;
@@ -40,19 +40,17 @@ export default function ShiftHeader({
     [shift.id, shift.startTime, shift.endTime, slots, slotTimes]
   );
 
-  // Calcolo minuti scoperti
   const uncoveredMin = React.useMemo(() => {
     return totalUncoveredMinutes({
       shiftStart: shift.startTime,
       shiftEnd: shift.endTime,
-      slots,
+      slots: slots || [],
       slotTimes,
       slotKeyPrefix: `${shift.id}-`,
     });
   }, [depsKey, shift.startTime, shift.endTime]);
 
-  // Tutti slot assegnati?
-  const allSlotsAssigned = slots.length > 0 && slots.every((s) => !!s.operatorId);
+  const allSlotsAssigned = (slots?.length ?? 0) > 0 && (slots || []).every((s) => !!s.operatorId);
   const showCover = allSlotsAssigned && uncoveredMin > 0;
 
   return (
@@ -60,7 +58,7 @@ export default function ShiftHeader({
       <h3 className="text-base font-medium">
         Turno del {shift.date} {shift.startTime} – {shift.endTime}
       </h3>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {uncoveredMin <= 0 ? (
           <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">
             OK
