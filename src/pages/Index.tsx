@@ -1,22 +1,19 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+// src/pages/index.tsx
+import React from "react";
+import ShiftCard from "../components/ShiftCard";
 
-const Index = () => {
-  const navigate = useNavigate();
-  useEffect(() => {
-    navigate("/events", { replace: true });
-  }, [navigate]);
+export default function Home() {
+  const shift = {
+    id: "shift-1",
+    date: "16/08/2025",
+    startTime: "09:00",
+    endTime: "21:00",
+  };
 
   return (
-    <main className="min-h-[50vh] flex items-center justify-center">
-      <Helmet>
-        <title>Gestionale Sicurezza</title>
-        <meta name="description" content="Gestionale moderno per agenzie di sicurezza: eventi, turni, operatori." />
-      </Helmet>
-      <p className="text-muted-foreground">Reindirizzamento...</p>
+    <main className="p-6">
+      <h1 className="text-xl font-bold mb-4">Gestione Turni</h1>
+      <ShiftCard shift={shift} />
     </main>
   );
-};
-
-export default Index;
+}
