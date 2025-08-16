@@ -26,10 +26,10 @@ export default function ShiftHeader({
   slotTimes?: Record<string, { start?: string; end?: string }>;
   onCover: () => void;
 }) {
-  // Chiave per aggiornamenti reattivi (considera anche eventuali override negli input per-slot)
+  // Chiave per aggiornamenti reattivi
   const depsKey = React.useMemo(
     () =>
-      (slots || [])
+      slots
         .map((slot, i) => {
           const k = `${shift.id}-${i}`;
           const st = slotTimes?.[k]?.start ?? slot.startTime ?? shift.startTime;
@@ -40,27 +40,19 @@ export default function ShiftHeader({
     [shift.id, shift.startTime, shift.endTime, slots, slotTimes]
   );
 
-  // FIX: se esiste, usa l'ora di inizio del PRIMO slot come inizio "effettivo" del turno
-  //      (così il calcolo delle ore scoperte non parte forzatamente da shift.startTime)
-  const effectiveShiftStart = React.useMemo(() => {
-    const firstKey = `${shift.id}-0`;
-    return slotTimes?.[firstKey]?.start ?? shift.startTime;
-  }, [shift.id, shift.startTime, slotTimes]);
-
-  // Calcolo minuti scoperti (usa effectiveShiftStart)
+  // Calcolo minuti scoperti
   const uncoveredMin = React.useMemo(() => {
     return totalUncoveredMinutes({
-      shiftStart: effectiveShiftStart,
+      shiftStart: shift.startTime,
       shiftEnd: shift.endTime,
-      slots: slots || [],
+      slots,
       slotTimes,
       slotKeyPrefix: `${shift.id}-`,
     });
-  }, [depsKey, effectiveShiftStart, shift.endTime]);
+  }, [depsKey, shift.startTime, shift.endTime]);
 
   // Tutti slot assegnati?
-  const allSlotsAssigned =
-    (slots?.length ?? 0) > 0 && (slots || []).every((s) => !!s.operatorId);
+  const allSlotsAssigned = slots.length > 0 && slots.every((s) => !!s.operatorId);
   const showCover = allSlotsAssigned && uncoveredMin > 0;
 
   return (
