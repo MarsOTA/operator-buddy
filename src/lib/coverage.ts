@@ -3,7 +3,7 @@
 export function toMinutes(t: string | null | undefined): number {
   if (!t) return 0;
   const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
+  return (h || 0) * 60 + (m || 0);
 }
 
 export function formatHM(mins: number): string {
@@ -12,13 +12,14 @@ export function formatHM(mins: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-interface Params {
-  shiftStart: string;
-  shiftEnd: string;
-  slots: { id?: string; operatorId?: string | null; startTime?: string | null; endTime?: string | null }[];
-  slotTimes?: Record<string, { start?: string; end?: string }>;
-  slotKeyPrefix?: string;
-}
+type Slot = {
+  id?: string;
+  operatorId?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+};
+
+type SlotTimes = Record<string, { start?: string; end?: string }>;
 
 export function totalUncoveredMinutes({
   shiftStart,
@@ -26,43 +27,45 @@ export function totalUncoveredMinutes({
   slots,
   slotTimes,
   slotKeyPrefix = "",
-}: Params): number {
+}: {
+  shiftStart: string;
+  shiftEnd: string;
+  slots: Slot[];
+  slotTimes?: SlotTimes;
+  slotKeyPrefix?: string;
+}): number {
   const shiftStartMin = toMinutes(shiftStart);
   const shiftEndMin = toMinutes(shiftEnd);
 
-  // prendo gli intervalli reali degli slot (priorità a slotTimes)
-  const intervals = slots.map((slot, i) => {
+  const intervals: [number, number][] = (slots || []).map((slot, i) => {
     const key = `${slotKeyPrefix}${i}`;
     const st = slotTimes?.[key]?.start ?? slot.startTime ?? shiftStart;
     const en = slotTimes?.[key]?.end ?? slot.endTime ?? shiftEnd;
     return [toMinutes(st), toMinutes(en)];
   });
 
-  if (intervals.length === 0) {
-    return shiftEndMin - shiftStartMin;
-  }
+  if (intervals.length === 0) return Math.max(shiftEndMin - shiftStartMin, 0);
 
-  // ordina intervalli
   intervals.sort((a, b) => a[0] - b[0]);
 
-  // merge intervalli coperti
+  // merge e somma copertura
   let covered = 0;
-  let currentStart = intervals[0][0];
-  let currentEnd = intervals[0][1];
+  let cs = Math.max(intervals[0][0], shiftStartMin);
+  let ce = Math.min(intervals[0][1], shiftEndMin);
 
   for (let i = 1; i < intervals.length; i++) {
-    const [s, e] = intervals[i];
-    if (s <= currentEnd) {
-      currentEnd = Math.max(currentEnd, e);
+    const s = Math.max(intervals[i][0], shiftStartMin);
+    const e = Math.min(intervals[i][1], shiftEndMin);
+    if (s <= ce) {
+      ce = Math.max(ce, e);
     } else {
-      covered += currentEnd - currentStart;
-      currentStart = s;
-      currentEnd = e;
+      covered += Math.max(ce - cs, 0);
+      cs = s;
+      ce = e;
     }
   }
-  covered += currentEnd - currentStart;
+  covered += Math.max(ce - cs, 0);
 
-  // minuti totali scoperti
-  const total = shiftEndMin - shiftStartMin;
+  const total = Math.max(shiftEndMin - shiftStartMin, 0);
   return Math.max(total - covered, 0);
 }
