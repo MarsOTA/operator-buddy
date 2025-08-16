@@ -1,3 +1,4 @@
+// src/components/ShiftHeader.tsx
 import React from "react";
 import { totalUncoveredMinutes, formatHM } from "@/lib/coverage";
 
@@ -17,51 +18,42 @@ type Slot = {
 
 export default function ShiftHeader({
   shift,
-  slots = [], // fallback array vuoto
+  slots,
   slotTimes,
   onCover,
 }: {
   shift: Shift;
-  slots?: Slot[];
+  slots: Slot[];
   slotTimes?: Record<string, { start?: string; end?: string }>;
   onCover: () => void;
 }) {
   // Chiave per aggiornamenti reattivi
-  const depsKey = React.useMemo(() => {
-    return (slots || [])
-      .map((slot, i) => {
-        const k = `${shift.id}-${i}`;
-        // 👇 Ordine di priorità corretto:
-        // 1. slotTimes (se presente)
-        // 2. slot.startTime / slot.endTime
-        // 3. shift.startTime / shift.endTime
-        const st =
-          slotTimes?.[k]?.start ??
-          (slot.startTime && slot.startTime !== "" ? slot.startTime : null) ??
-          shift.startTime;
-        const en =
-          slotTimes?.[k]?.end ??
-          (slot.endTime && slot.endTime !== "" ? slot.endTime : null) ??
-          shift.endTime;
-        return [slot.operatorId ?? "", st ?? "", en ?? ""].join("|");
-      })
-      .join("||");
-  }, [shift.id, shift.startTime, shift.endTime, slots, slotTimes]);
+  const depsKey = React.useMemo(
+    () =>
+      slots
+        .map((slot, i) => {
+          const k = `${shift.id}-${i}`;
+          const st = slotTimes?.[k]?.start ?? slot.startTime ?? shift.startTime;
+          const en = slotTimes?.[k]?.end ?? slot.endTime ?? shift.endTime;
+          return [slot.operatorId ?? "", st ?? "", en ?? ""].join("|");
+        })
+        .join("||"),
+    [shift.id, shift.startTime, shift.endTime, slots, slotTimes]
+  );
 
   // Calcolo minuti scoperti
   const uncoveredMin = React.useMemo(() => {
     return totalUncoveredMinutes({
       shiftStart: shift.startTime,
       shiftEnd: shift.endTime,
-      slots: slots || [],
+      slots,
       slotTimes,
       slotKeyPrefix: `${shift.id}-`,
     });
   }, [depsKey, shift.startTime, shift.endTime]);
 
-  // Tutti gli slot assegnati?
-  const allSlotsAssigned =
-    (slots?.length ?? 0) > 0 && (slots || []).every((s) => !!s.operatorId);
+  // Tutti slot assegnati?
+  const allSlotsAssigned = slots.length > 0 && slots.every((s) => !!s.operatorId);
   const showCover = allSlotsAssigned && uncoveredMin > 0;
 
   return (
