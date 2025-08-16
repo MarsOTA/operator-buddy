@@ -1,4 +1,3 @@
-// src/components/ShiftHeader.tsx
 import React from "react";
 import { totalUncoveredMinutes, formatHM } from "@/lib/coverage";
 
