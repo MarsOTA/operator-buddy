@@ -28,7 +28,7 @@ export interface EventItem {
   address: string;
   activityCode?: string;
   startDate?: string; // YYYY-MM-DD
-  endDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD
 }
 
 export interface Task {
@@ -65,13 +65,13 @@ export const ACTIVITY_TYPES: ActivityType[] = [
 export interface Shift {
   id: ID;
   eventId: ID;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
-  operatorIds: ID[];
+  date: string;       // YYYY-MM-DD
+  startTime: string;  // HH:mm
+  endTime: string;    // HH:mm
+  operatorIds: ID[];  // slot (una riga per operatore)
   activityType?: ActivityType;
   teamLeaderId?: ID;
-  requiredOperators: number;
+  requiredOperators: number; // ⚠️ CAPIENZA FISSA DEL TURNO
   notes?: string;
 }
 
@@ -153,12 +153,25 @@ export const useAppStore = create<AppState>()(
 
       getEventById: (id) => get().events.find((e) => e.id === id),
 
+      // Crea turno: requiredOperators è fisso; operatorIds viene dal chiamante (es. array di "" lungo requiredOperators)
       createShift: ({ eventId, date, startTime, endTime, operatorIds = [], activityType, teamLeaderId, requiredOperators, notes }) => {
-        const newShift: Shift = { id: uid(), eventId, date, startTime, endTime, operatorIds, activityType, teamLeaderId, requiredOperators, notes };
+        const newShift: Shift = {
+          id: uid(),
+          eventId,
+          date,
+          startTime,
+          endTime,
+          operatorIds,
+          activityType,
+          teamLeaderId,
+          requiredOperators,
+          notes
+        };
         set((state) => ({ shifts: [newShift, ...state.shifts] }));
         return newShift;
       },
 
+      // Mantengo per retro-compatibilità (aggiunge in coda eventuali id, deduplicando)
       assignOperators: (shiftId, operatorIds) => {
         set((state) => ({
           shifts: state.shifts.map((s) =>
@@ -169,58 +182,47 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
+      // Setta/crea lo slot all'indice e assegna l'operatore ("" per svuotare)
       setOperatorSlot: (shiftId, slotIndex, operatorId) => {
         set((state) => ({
           shifts: state.shifts.map((s) => {
             if (s.id !== shiftId) return s;
-            const newOperatorIds = [...s.operatorIds];
-            // Ensure array is large enough
-            while (newOperatorIds.length <= slotIndex) {
-              newOperatorIds.push("");
-            }
-            newOperatorIds[slotIndex] = operatorId;
-            return { ...s, operatorIds: newOperatorIds };
+            const next = [...s.operatorIds];
+            while (next.length <= slotIndex) next.push("");
+            next[slotIndex] = operatorId; // "" per rimuovere assegnazione
+            // se rimuovi il TL
+            const newTL = s.teamLeaderId && next.includes(s.teamLeaderId) ? s.teamLeaderId : undefined;
+            return { ...s, operatorIds: next, teamLeaderId: newTL };
           }),
         }));
       },
 
-      addSlotToShift: (shiftId, startTime?: string, endTime?: string) => {
+      // ➕ Aggiungi una riga (slot) VUOTA: NON modificare requiredOperators
+      addSlotToShift: (shiftId, _startTime?: string, _endTime?: string) => {
         set((state) => ({
           shifts: state.shifts.map((s) => {
             if (s.id !== shiftId) return s;
-            
-            const newSlot = "";
-            const newOperatorIds = [...s.operatorIds, newSlot];
-            
-            // Creiamo il nuovo shift con i tempi predefiniti se forniti
-            const updatedShift = { 
-              ...s, 
-              operatorIds: newOperatorIds,
-              requiredOperators: s.requiredOperators + 1 
-            };
-            
-            return updatedShift;
-            
-            return { 
-              ...s, 
-              operatorIds: newOperatorIds, 
-              requiredOperators: s.requiredOperators + 1 
+            const newOperatorIds = [...s.operatorIds, ""];
+            return {
+              ...s,
+              operatorIds: newOperatorIds, // capienza resta quella fissata in requiredOperators
             };
           }),
         }));
       },
 
+      // 🗑️ Rimuovi assegnazione dell'operatore (senza eliminare la riga)
       removeOperator: (shiftId, operatorId) => {
         set((state) => ({
-          shifts: state.shifts.map((s) =>
-            s.id === shiftId
-              ? {
-                  ...s,
-                  operatorIds: s.operatorIds.filter((id) => id !== operatorId),
-                  teamLeaderId: s.teamLeaderId === operatorId ? undefined : s.teamLeaderId,
-                }
-              : s
-          ),
+          shifts: state.shifts.map((s) => {
+            if (s.id !== shiftId) return s;
+            const idx = s.operatorIds.findIndex((id) => id === operatorId);
+            if (idx === -1) return s;
+            const next = [...s.operatorIds];
+            next[idx] = ""; // libera lo slot
+            const newTL = s.teamLeaderId === operatorId ? undefined : s.teamLeaderId;
+            return { ...s, operatorIds: next, teamLeaderId: newTL };
+          }),
         }));
       },
 
@@ -242,11 +244,10 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           shifts: state.shifts.map((s) => {
             if (s.id !== shiftId) return s;
-            // Se operatorId è vuoto o non valido, rimuovi il Team Leader
+            // se non assegnato nello shift → rimuovi TL
             if (!operatorId || !s.operatorIds.includes(operatorId)) {
               return { ...s, teamLeaderId: undefined };
             }
-            // Altrimenti imposta il Team Leader
             return { ...s, teamLeaderId: operatorId };
           }),
         }));
@@ -254,25 +255,19 @@ export const useAppStore = create<AppState>()(
 
       updateShiftNotes: (shiftId, notes) => {
         set((state) => ({
-          shifts: state.shifts.map((s) =>
-            s.id === shiftId ? { ...s, notes } : s
-          ),
+          shifts: state.shifts.map((s) => (s.id === shiftId ? { ...s, notes } : s)),
         }));
       },
 
       updateShiftTime: (shiftId, data) => {
         set((state) => ({
-          shifts: state.shifts.map((s) =>
-            s.id === shiftId ? { ...s, ...data } : s
-          ),
+          shifts: state.shifts.map((s) => (s.id === shiftId ? { ...s, ...data } : s)),
         }));
       },
 
       updateShiftActivityType: (shiftId, activityType) => {
         set((state) => ({
-          shifts: state.shifts.map((s) =>
-            s.id === shiftId ? { ...s, activityType } : s
-          ),
+          shifts: state.shifts.map((s) => (s.id === shiftId ? { ...s, activityType } : s)),
         }));
       },
 
@@ -297,11 +292,11 @@ export const useAppStore = create<AppState>()(
       },
 
       createTask: (data) => {
-        const newTask: Task = { 
-          id: uid(), 
-          ...data, 
+        const newTask: Task = {
+          id: uid(),
+          ...data,
           completed: false,
-          createdAt: new Date().toISOString() 
+          createdAt: new Date().toISOString(),
         };
         set((state) => ({ tasks: [newTask, ...state.tasks] }));
         return newTask;
@@ -319,8 +314,10 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
-      getTasksByEvent: (eventId) => get().tasks.filter((t) => t.eventId === eventId)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      getTasksByEvent: (eventId) =>
+        get()
+          .tasks.filter((t) => t.eventId === eventId)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     }),
     { name: "security-agency-store" }
   )
