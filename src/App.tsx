@@ -13,8 +13,6 @@ import EventDetail from "./pages/EventDetail";
 import Header from "./components/layout/Header";
 import ShiftInsertPage from "@/pages/ShiftInsertPage";
 
-<Route path="/insert-shift" element={<ShiftInsertPage />} />
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -30,7 +28,7 @@ const App = () => (
             <Route path="/events" element={<EventsList />} />
             <Route path="/events/new" element={<CreateEvent />} />
             <Route path="/events/:id" element={<EventDetail />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/insert-shift" element={<ShiftInsertPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
