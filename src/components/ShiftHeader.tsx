@@ -6,6 +6,9 @@ type Shift = {
   date: string;
   startTime: string;
   endTime: string;
+  // nel tuo store di solito è "requiredOperators"
+  requiredOperators?: number;
+  numberOfOperators?: number; // fallback se hai questo nome
 };
 
 type Slot = {
@@ -26,10 +29,9 @@ export default function ShiftHeader({
   slotTimes?: Record<string, { start?: string; end?: string }>;
   onCover: () => void;
 }) {
-  // Chiave per aggiornamenti reattivi
   const depsKey = React.useMemo(
     () =>
-      slots
+      (slots || [])
         .map((slot, i) => {
           const k = `${shift.id}-${i}`;
           const st = slotTimes?.[k]?.start ?? slot.startTime ?? shift.startTime;
@@ -40,19 +42,21 @@ export default function ShiftHeader({
     [shift.id, shift.startTime, shift.endTime, slots, slotTimes]
   );
 
-  // Calcolo minuti scoperti
+  const required = shift.requiredOperators ?? shift.numberOfOperators ?? 1;
+
   const uncoveredMin = React.useMemo(() => {
     return totalUncoveredMinutes({
       shiftStart: shift.startTime,
       shiftEnd: shift.endTime,
-      slots,
+      slots: slots || [],
       slotTimes,
       slotKeyPrefix: `${shift.id}-`,
+      requiredOperators: required,
     });
-  }, [depsKey, shift.startTime, shift.endTime]);
+  }, [depsKey, shift.startTime, shift.endTime, required]);
 
-  // Tutti slot assegnati?
-  const allSlotsAssigned = slots.length > 0 && slots.every((s) => !!s.operatorId);
+  const allSlotsAssigned =
+    (slots?.length ?? 0) > 0 && (slots || []).every((s) => !!s.operatorId);
   const showCover = allSlotsAssigned && uncoveredMin > 0;
 
   return (
