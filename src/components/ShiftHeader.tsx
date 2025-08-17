@@ -6,9 +6,7 @@ type Shift = {
   date: string;
   startTime: string;
   endTime: string;
-  // nel tuo store di solito è "requiredOperators"
-  requiredOperators?: number;
-  numberOfOperators?: number; // fallback se hai questo nome
+  requiredOperators?: number; // deve essere valorizzato quando crei il turno
 };
 
 type Slot = {
@@ -29,6 +27,7 @@ export default function ShiftHeader({
   slotTimes?: Record<string, { start?: string; end?: string }>;
   onCover: () => void;
 }) {
+  // dipendenze per aggiornamenti reattivi
   const depsKey = React.useMemo(
     () =>
       (slots || [])
@@ -42,8 +41,11 @@ export default function ShiftHeader({
     [shift.id, shift.startTime, shift.endTime, slots, slotTimes]
   );
 
-  const required = shift.requiredOperators ?? shift.numberOfOperators ?? 1;
+  // ⚠️ capienza richiesta fissa dal turno (NON derivarla dal numero di righe!)
+  const required =
+    typeof shift.requiredOperators === "number" ? shift.requiredOperators : 1;
 
+  // minuti scoperti in "ore-operatore"
   const uncoveredMin = React.useMemo(() => {
     return totalUncoveredMinutes({
       shiftStart: shift.startTime,
