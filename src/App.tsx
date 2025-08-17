@@ -11,6 +11,9 @@ import EventsList from "./pages/EventsList";
 import CreateEvent from "./pages/CreateEvent";
 import EventDetail from "./pages/EventDetail";
 import Header from "./components/layout/Header";
+import ShiftInsertPage from "@/pages/ShiftInsertPage";
+
+<Route path="/insert-shift" element={<ShiftInsertPage />} />
 
 const queryClient = new QueryClient();
 
