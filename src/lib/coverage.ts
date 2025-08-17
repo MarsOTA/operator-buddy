@@ -9,11 +9,12 @@ export const formatHM = (mins: number) => {
   return h > 0 ? `${h}h${m ? ` ${m}m` : ""}` : `${m}m`;
 };
 
-// Interfaccia per i gap
+// Interfaccia per i gap 
 export interface Gap {
   start: string;
   end: string;
   durationMinutes: number;
+  operatorsNeeded?: number; // Numero di operatori necessari per questo gap
 }
 
 function formatTime(minutes: number): string {
@@ -22,8 +23,8 @@ function formatTime(minutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
-// Funzione per trovare i gap reali nel turno
-export function findGapsInShift({
+// Calcola la copertura minuto per minuto per ogni slot temporale
+function calculateCoverageByMinute({
   shiftStart,
   shiftEnd,
   slots,
@@ -39,19 +40,17 @@ export function findGapsInShift({
   }>;
   slotTimes?: Record<string, { start?: string; end?: string }>;
   slotKeyPrefix?: string;
-}): Gap[] {
-  if (slots.length === 0) {
-    return [{
-      start: shiftStart,
-      end: shiftEnd,
-      durationMinutes: toMinutes(shiftEnd) - toMinutes(shiftStart)
-    }];
-  }
-
-  // Raccogli tutti gli intervalli coperti
-  const coveredIntervals: Array<{ start: number; end: number }> = [];
+}): number[] {
+  const shiftStartMins = toMinutes(shiftStart);
+  const shiftEndMins = toMinutes(shiftEnd);
+  const shiftDurationMins = shiftEndMins - shiftStartMins;
+  
+  // Array che conta quanti operatori coprono ogni minuto
+  const coverage = new Array(shiftDurationMins).fill(0);
+  
   slots.forEach((slot, idx) => {
     if (!slot?.operatorId) return;
+    
     const key = `${slotKeyPrefix}${idx}`;
     const start = slotTimes?.[key]?.start ?? slot.startTime ?? shiftStart;
     const end = slotTimes?.[key]?.end ?? slot.endTime ?? shiftEnd;
@@ -59,71 +58,93 @@ export function findGapsInShift({
     const startMins = toMinutes(start);
     const endMins = toMinutes(end);
     
-    if (startMins < endMins) {
-      coveredIntervals.push({ start: startMins, end: endMins });
+    // Incrementa il conteggio per ogni minuto coperto da questo slot
+    for (let minute = Math.max(0, startMins - shiftStartMins); 
+         minute < Math.min(shiftDurationMins, endMins - shiftStartMins); 
+         minute++) {
+      coverage[minute]++;
     }
   });
+  
+  return coverage;
+}
 
-  if (coveredIntervals.length === 0) {
+// Trova i gap dove servono più operatori
+export function findGapsInShift({
+  shiftStart,
+  shiftEnd,
+  slots,
+  slotTimes,
+  slotKeyPrefix = "",
+  requiredOperators = 1, // Numero di operatori necessari contemporaneamente
+}: {
+  shiftStart: string;
+  shiftEnd: string;
+  slots: Array<{
+    operatorId?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+  }>;
+  slotTimes?: Record<string, { start?: string; end?: string }>;
+  slotKeyPrefix?: string;
+  requiredOperators?: number;
+}): Gap[] {
+  
+  if (slots.length === 0) {
     return [{
       start: shiftStart,
       end: shiftEnd,
-      durationMinutes: toMinutes(shiftEnd) - toMinutes(shiftStart)
+      durationMinutes: toMinutes(shiftEnd) - toMinutes(shiftStart),
+      operatorsNeeded: requiredOperators
     }];
   }
 
-  // Ordina per orario di inizio
-  coveredIntervals.sort((a, b) => a.start - b.start);
-
-  // Unisci intervalli sovrapposti
-  const mergedIntervals: Array<{ start: number; end: number }> = [];
-  for (const interval of coveredIntervals) {
-    if (mergedIntervals.length === 0 || mergedIntervals[mergedIntervals.length - 1].end < interval.start) {
-      mergedIntervals.push(interval);
-    } else {
-      mergedIntervals[mergedIntervals.length - 1].end = Math.max(
-        mergedIntervals[mergedIntervals.length - 1].end,
-        interval.end
-      );
-    }
-  }
-
-  // Trova i gap
-  const gaps: Gap[] = [];
   const shiftStartMins = toMinutes(shiftStart);
-  const shiftEndMins = toMinutes(shiftEnd);
-
-  // Gap prima del primo intervallo
-  if (mergedIntervals[0].start > shiftStartMins) {
-    gaps.push({
-      start: shiftStart,
-      end: formatTime(mergedIntervals[0].start),
-      durationMinutes: mergedIntervals[0].start - shiftStartMins
-    });
-  }
-
-  // Gap tra gli intervalli
-  for (let i = 0; i < mergedIntervals.length - 1; i++) {
-    const gapStart = mergedIntervals[i].end;
-    const gapEnd = mergedIntervals[i + 1].start;
-    if (gapStart < gapEnd) {
-      gaps.push({
-        start: formatTime(gapStart),
-        end: formatTime(gapEnd),
-        durationMinutes: gapEnd - gapStart
-      });
+  const coverage = calculateCoverageByMinute({ 
+    shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix 
+  });
+  
+  const gaps: Gap[] = [];
+  let gapStart: number | null = null;
+  let maxOperatorsNeeded = 0;
+  
+  for (let minute = 0; minute < coverage.length; minute++) {
+    const operatorsPresent = coverage[minute];
+    const operatorsNeeded = Math.max(0, requiredOperators - operatorsPresent);
+    
+    if (operatorsNeeded > 0) {
+      // Inizia un nuovo gap o continua quello esistente
+      if (gapStart === null) {
+        gapStart = minute;
+        maxOperatorsNeeded = operatorsNeeded;
+      } else {
+        maxOperatorsNeeded = Math.max(maxOperatorsNeeded, operatorsNeeded);
+      }
+    } else {
+      // Chiudi il gap se ne stavamo tracciando uno
+      if (gapStart !== null) {
+        gaps.push({
+          start: formatTime(shiftStartMins + gapStart),
+          end: formatTime(shiftStartMins + minute),
+          durationMinutes: minute - gapStart,
+          operatorsNeeded: maxOperatorsNeeded
+        });
+        gapStart = null;
+        maxOperatorsNeeded = 0;
+      }
     }
   }
-
-  // Gap dopo l'ultimo intervallo
-  if (mergedIntervals[mergedIntervals.length - 1].end < shiftEndMins) {
+  
+  // Chiudi l'ultimo gap se necessario
+  if (gapStart !== null) {
     gaps.push({
-      start: formatTime(mergedIntervals[mergedIntervals.length - 1].end),
+      start: formatTime(shiftStartMins + gapStart),
       end: shiftEnd,
-      durationMinutes: shiftEndMins - mergedIntervals[mergedIntervals.length - 1].end
+      durationMinutes: coverage.length - gapStart,
+      operatorsNeeded: maxOperatorsNeeded
     });
   }
-
+  
   return gaps;
 }
 
@@ -134,6 +155,7 @@ export function getFirstGap({
   slots,
   slotTimes,
   slotKeyPrefix = "",
+  requiredOperators = 1,
 }: {
   shiftStart: string;
   shiftEnd: string;
@@ -144,18 +166,22 @@ export function getFirstGap({
   }>;
   slotTimes?: Record<string, { start?: string; end?: string }>;
   slotKeyPrefix?: string;
+  requiredOperators?: number;
 }): Gap | null {
-  const gaps = findGapsInShift({ shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix });
+  const gaps = findGapsInShift({ 
+    shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix, requiredOperators 
+  });
   return gaps.length > 0 ? gaps[0] : null;
 }
 
-// VERSIONE CORRETTA: Calcola il tempo totale scoperto basandosi sui gap reali
+// Calcola il totale di ore-operatore mancanti
 export function totalUncoveredMinutes({
   shiftStart,
   shiftEnd,
   slots,
   slotTimes,
   slotKeyPrefix = "",
+  requiredOperators = 1,
 }: {
   shiftStart: string;
   shiftEnd: string;
@@ -166,12 +192,21 @@ export function totalUncoveredMinutes({
   }>;
   slotTimes?: Record<string, { start?: string; end?: string }>;
   slotKeyPrefix?: string;
+  requiredOperators?: number;
 }): number {
-  const gaps = findGapsInShift({ shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix });
-  return gaps.reduce((total, gap) => total + gap.durationMinutes, 0);
+  
+  const coverage = calculateCoverageByMinute({ 
+    shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix 
+  });
+  
+  // Somma tutti i minuti-operatore mancanti
+  return coverage.reduce((total, operatorsPresent) => {
+    const operatorsMissing = Math.max(0, requiredOperators - operatorsPresent);
+    return total + operatorsMissing;
+  }, 0);
 }
 
-// Funzione legacy mantenuta per compatibilità (ora deprecata ma funzionante)
+// Funzione legacy mantenuta per compatibilità
 export function uncoveredForSlot({
   slot,
   shiftStart,
@@ -187,12 +222,61 @@ export function uncoveredForSlot({
   shiftEnd: string;
   slotTime?: { start?: string; end?: string };
 }): number {
-  // NOTA: Questa funzione è ora deprecata perché non gestisce correttamente 
-  // le sovrapposizioni. Usa totalUncoveredMinutes per calcoli accurati.
   if (!slot?.operatorId) return 0;
   const start = slotTime?.start ?? slot.startTime ?? shiftStart;
   const end   = slotTime?.end   ?? slot.endTime   ?? shiftEnd;
   const slotDur = Math.max(0, toMinutes(end) - toMinutes(start));
   const fullDur = Math.max(0, toMinutes(shiftEnd) - toMinutes(shiftStart));
   return Math.max(0, fullDur - slotDur);
+}
+
+// Funzione di debug per visualizzare la copertura
+export function debugCoverage({
+  shiftStart,
+  shiftEnd,
+  slots,
+  slotTimes,
+  slotKeyPrefix = "",
+  requiredOperators = 1,
+}: {
+  shiftStart: string;
+  shiftEnd: string;
+  slots: Array<{
+    operatorId?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+  }>;
+  slotTimes?: Record<string, { start?: string; end?: string }>;
+  slotKeyPrefix?: string;
+  requiredOperators?: number;
+}) {
+  console.log(`\n=== DEBUG COVERAGE ===`);
+  console.log(`Turno: ${shiftStart}-${shiftEnd}, Operatori richiesti: ${requiredOperators}`);
+  
+  const coverage = calculateCoverageByMinute({ 
+    shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix 
+  });
+  
+  const shiftStartMins = toMinutes(shiftStart);
+  
+  // Mostra copertura ogni 30 minuti per leggibilità
+  for (let i = 0; i < coverage.length; i += 30) {
+    const time = formatTime(shiftStartMins + i);
+    const ops = coverage[i];
+    const missing = Math.max(0, requiredOperators - ops);
+    console.log(`${time}: ${ops}/${requiredOperators} operatori ${missing > 0 ? `(mancano ${missing})` : '✅'}`);
+  }
+  
+  const totalMissing = totalUncoveredMinutes({
+    shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix, requiredOperators
+  });
+  
+  console.log(`\nTotale minuti-operatore mancanti: ${totalMissing} (${formatHM(totalMissing)})`);
+  
+  const gaps = findGapsInShift({
+    shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix, requiredOperators
+  });
+  
+  console.log(`\nGap trovati:`, gaps);
+  console.log(`=== FINE DEBUG ===\n`);
 }
