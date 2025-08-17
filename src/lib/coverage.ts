@@ -27,7 +27,7 @@ type BaseParams = {
   shiftEnd: string;
   slots: Slot[];
   slotTimes?: SlotTimes;
-  /** chiave usata per leggere slotTimes: `${slotKeyPrefix}${index}` */
+  /** chiave per slotTimes: `${slotKeyPrefix}${index}` */
   slotKeyPrefix?: string;
 };
 
@@ -37,14 +37,23 @@ type BaseParams = {
 //  - copertura = integrale nel tempo di min( operatoriAttivi, requiredOperators )
 //  - uncovered = domanda - copertura
 // ------------------------------------------------------------------
-export function totalUncoveredMinutes(params: BaseParams & { requiredOperators?: number }): number {
-  const { shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix = "", requiredOperators = 1 } = params;
+export function totalUncoveredMinutes(
+  params: BaseParams & { requiredOperators?: number }
+): number {
+  const {
+    shiftStart,
+    shiftEnd,
+    slots,
+    slotTimes,
+    slotKeyPrefix = "",
+    requiredOperators = 1,
+  } = params;
 
   const S = toMinutes(shiftStart);
   const E = toMinutes(shiftEnd);
   const demand = Math.max(E - S, 0) * Math.max(requiredOperators, 0);
 
-  // Eventi +1/-1 SOLO per slot assegnati (operatorId valorizzato)
+  // Eventi +1/-1 SOLO per slot assegnati
   const events: Array<[number, number]> = [];
   (slots || []).forEach((s, i) => {
     if (!s?.operatorId) return;
@@ -61,7 +70,7 @@ export function totalUncoveredMinutes(params: BaseParams & { requiredOperators?:
 
   if (events.length === 0) return demand; // nessuna copertura
 
-  // Ordina temporalmente (a parità, i +1 prima dei -1)
+  // Ordina temporalmente (a parità, +1 prima di -1)
   events.sort((x, y) => (x[0] === y[0] ? y[1] - x[1] : x[0] - y[0]));
 
   let covered = 0;
@@ -76,7 +85,7 @@ export function totalUncoveredMinutes(params: BaseParams & { requiredOperators?:
       covered += Math.min(active, requiredOperators) * slice;
       cur = t;
     }
-    active += delta; // aggiorna operatori attivi nel punto t
+    active += delta;
   }
 
   // coda finale fino a E
@@ -84,7 +93,6 @@ export function totalUncoveredMinutes(params: BaseParams & { requiredOperators?:
     covered += Math.min(active, requiredOperators) * (E - cur);
   }
 
-  // uncovered = domanda - copertura (mai < 0)
   return Math.max(demand - covered, 0);
 }
 
@@ -92,8 +100,17 @@ export function totalUncoveredMinutes(params: BaseParams & { requiredOperators?:
 // Primo "buco" rispetto alla capienza richiesta (per il bottone +Copri)
 // Restituisce l'intervallo [start, end] dove active < requiredOperators
 // ------------------------------------------------------------------
-export function getFirstGapWithCapacity(params: BaseParams & { requiredOperators: number }): { start: string; end: string } | null {
-  const { shiftStart, shiftEnd, slots, slotTimes, slotKeyPrefix = "", requiredOperators } = params;
+export function getFirstGapWithCapacity(
+  params: BaseParams & { requiredOperators: number }
+): { start: string; end: string } | null {
+  const {
+    shiftStart,
+    shiftEnd,
+    slots,
+    slotTimes,
+    slotKeyPrefix = "",
+    requiredOperators,
+  } = params;
 
   const S = toMinutes(shiftStart);
   const E = toMinutes(shiftEnd);
@@ -112,7 +129,6 @@ export function getFirstGapWithCapacity(params: BaseParams & { requiredOperators
     }
   });
 
-  // nessun assegnato → tutto il turno è buco
   if (events.length === 0) {
     return requiredOperators > 0 ? { start: shiftStart, end: shiftEnd } : null;
   }
@@ -155,7 +171,6 @@ export function getFirstGapWithCapacity(params: BaseParams & { requiredOperators
     active += delta;
   }
 
-  // coda finale
   if (cur < E && active < requiredOperators) {
     return { start: mmToHHMM(cur), end: mmToHHMM(E) };
   }
