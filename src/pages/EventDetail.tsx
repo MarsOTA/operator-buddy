@@ -1,4 +1,3 @@
-import { getFirstGapWithCapacity } from "@/lib/coverage";
 import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
 import { useMemo, useState } from "react";
@@ -17,12 +16,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+
+// ⬇️ NOVITÀ: import del calcolo gap con capienza fissa
+import { getFirstGapWithCapacity } from "@/lib/coverage";
+
 const EventDetail = () => {
-  const {
-    id
-  } = useParams<{
-    id: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
   const event = useAppStore(s => s.getEventById(id!));
   const clients = useAppStore(s => s.clients);
   const brands = useAppStore(s => s.brands);
@@ -40,7 +39,7 @@ const EventDetail = () => {
   const deleteShift = useAppStore(s => s.deleteShift);
   const addSlotToShift = useAppStore(s => s.addSlotToShift);
   
-  // State for individual row time editing - each row has its own independent times
+  // State per orari per-riga
   const [slotTimes, setSlotTimes] = useState<{[key: string]: {start?: string, end?: string}}>({});
   const shifts = useAppStore(s => s.getShiftsByEvent(id!));
   const clientName = useMemo(() => clients.find(c => c.id === event?.clientId)?.name, [clients, event]);
@@ -62,7 +61,7 @@ const EventDetail = () => {
   const handleShiftSubmit = (values: any) => {
     const d = `${values.date.getFullYear()}-${String(values.date.getMonth() + 1).padStart(2, "0")}-${String(values.date.getDate()).padStart(2, "0")}`;
     
-    // Crea array di slot vuoti per il numero di operatori specificato
+    // array di slot vuoti per n° operatori richiesti
     const operatorIds = Array(values.numOperators).fill("");
     
     createShift({
@@ -72,14 +71,13 @@ const EventDetail = () => {
       endTime: values.endTime,
       operatorIds: operatorIds,
       activityType: values.activityType as ActivityType,
-      requiredOperators: values.numOperators,
+      requiredOperators: values.numOperators, // ⚠️ salva capienza fissa del turno
       notes: values.notes || undefined
     });
   };
 
   const onAssign = (selectedIds: string[]) => {
     if (currentShift && currentSlotIndex !== null) {
-      // Se selectedIds è vuoto o contiene stringa vuota, significa "Non assegnato"
       if (selectedIds.length === 0 || selectedIds[0] === "") {
         setOperatorSlot(currentShift, currentSlotIndex, "");
       } else {
@@ -90,6 +88,7 @@ const EventDetail = () => {
     setCurrentShift(null);
     setCurrentSlotIndex(null);
   };
+
   const handleSaveAddress = () => {
     updateEventAddress(event.id, tempAddress);
     setEditingAddress(false);
@@ -109,10 +108,8 @@ const EventDetail = () => {
   };
   const handleToggleTeamLeader = (shiftId: string, operatorId: string, isCurrentLeader: boolean) => {
     if (isCurrentLeader) {
-      // Remove team leader
       setTeamLeader(shiftId, "");
     } else {
-      // Set as team leader
       setTeamLeader(shiftId, operatorId);
     }
   };
@@ -135,41 +132,30 @@ const EventDetail = () => {
     return arr;
   }, [shifts, sort]);
 
-  // Calcola la copertura di un turno usando gli orari effettivi per-slot
+  // Copertura dashboard (resta com’era)
   const calculateShiftCoverage = (shift: any) => {
     const shiftStartTime = new Date(`2000-01-01T${shift.startTime}`);
     const shiftEndTime = new Date(`2000-01-01T${shift.endTime}`);
     const shiftMinutes = (shiftEndTime.getTime() - shiftStartTime.getTime()) / (1000 * 60);
-    
     let totalCoveredMinutes = 0;
     
     shift.operatorIds.forEach((operatorId: string, slotIndex: number) => {
       if (operatorId && operatorId.trim() !== "") {
         const slotKey = `${shift.id}-${slotIndex}`;
         const slotTime = slotTimes[slotKey];
-        
         const startTime = slotTime?.start || shift.startTime;
         const endTime = slotTime?.end || shift.endTime;
-        
         const slotStartTime = new Date(`2000-01-01T${startTime}`);
         const slotEndTime = new Date(`2000-01-01T${endTime}`);
-        
-        // Calculate overlap between slot time and shift time
         const effectiveStart = new Date(Math.max(slotStartTime.getTime(), shiftStartTime.getTime()));
         const effectiveEnd = new Date(Math.min(slotEndTime.getTime(), shiftEndTime.getTime()));
-        
         if (effectiveEnd > effectiveStart) {
           totalCoveredMinutes += (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60);
         }
       }
     });
-    
     const uncoveredMinutes = Math.max(0, shiftMinutes - totalCoveredMinutes);
-    
-    return {
-      isCovered: uncoveredMinutes === 0,
-      uncoveredMinutes
-    };
+    return { isCovered: uncoveredMinutes === 0, uncoveredMinutes };
   };
 
   const formatUncoveredTime = (minutes: number) => {
@@ -188,12 +174,12 @@ const EventDetail = () => {
         <link rel="canonical" href={`/events/${event.id}`} />
       </Helmet>
 
-      {/* Event info at top left, dashboards side by side */}
+      {/* top section */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <div className="lg:col-span-1">
           <h1 className="font-semibold mb-2 text-4xl">{event.title}</h1>
           
-          {/* Counters under title */}
+          {/* Counters */}
           <div className="grid grid-cols-3 gap-4 mt-4">
             <div className="bg-accent/20 rounded-lg p-4 border border-accent/40">
               <div className="flex items-center gap-2">
@@ -202,7 +188,7 @@ const EventDetail = () => {
                   <p className="text-sm text-muted-foreground">Totale operatori assegnati</p>
                   <p className="text-xl font-semibold text-primary">
                     {shifts.reduce((total, shift) => {
-                      return total + shift.operatorIds.filter(id => id && id.trim() !== "").length;
+                      return total + shift.operatorIds.filter((id: string) => id && id.trim() !== "").length;
                     }, 0)}
                   </p>
                 </div>
@@ -216,7 +202,7 @@ const EventDetail = () => {
                   <p className="text-sm text-muted-foreground">Totale ore assegnate</p>
                   <p className="text-xl font-semibold text-primary">
                     {shifts.reduce((total, shift) => {
-                      const assignedOperators = shift.operatorIds.filter(id => id && id.trim() !== "").length;
+                      const assignedOperators = shift.operatorIds.filter((id: string) => id && id.trim() !== "").length;
                       const startTime = new Date(`2000-01-01T${shift.startTime}`);
                       const endTime = new Date(`2000-01-01T${shift.endTime}`);
                       const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
@@ -237,7 +223,7 @@ const EventDetail = () => {
                       const startTime = new Date(`2000-01-01T${shift.startTime}`);
                       const endTime = new Date(`2000-01-01T${shift.endTime}`);
                       const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-                      return total + (hours * shift.requiredOperators);
+                      return total + (hours * (shift.requiredOperators ?? 1)); // usa capienza fissa
                     }, 0).toFixed(1)}
                   </p>
                 </div>
@@ -263,7 +249,6 @@ const EventDetail = () => {
           <ShiftPlanningForm onSubmit={handleShiftSubmit} />
         </div>
       </section>
-
 
       <section>
         <div className="flex items-center justify-between mb-4">
@@ -306,56 +291,60 @@ const EventDetail = () => {
             </div>
           </div>
         </div>
+
         <div className="space-y-6">
           {sortedShifts.map(shift => {
-            // Trasforma operatorIds array in slots array per il componente ShiftHeader
-            const slots = shift.operatorIds.map((operatorId, index) => ({
+            // slots "logici" per calcolo header
+            const slots = shift.operatorIds.map((operatorId: string, index: number) => ({
               id: `${shift.id}-slot-${index}`,
               operatorId: operatorId || undefined,
-              startTime: undefined, // Viene gestito tramite slotTimes
-              endTime: undefined,   // Viene gestito tramite slotTimes
+              startTime: undefined,
+              endTime: undefined,
             }));
 
-const handleCoverClick = () => {
-  // slots logici per il calcolo (gli orari effettivi li leggiamo da slotTimes)
-  const slots = shift.operatorIds.map((operatorId) => ({
-    operatorId: operatorId || undefined,
-    startTime: undefined,
-    endTime: undefined,
-  }));
+            // ⬇️ NUOVO handleCoverClick che usa capienza fissa del turno
+            const handleCoverClick = () => {
+              const calcSlots = shift.operatorIds.map((operatorId: string) => ({
+                operatorId: operatorId || undefined,
+                startTime: undefined,
+                endTime: undefined,
+              }));
 
-  const required = shift.requiredOperators ?? 1;
+              const required =
+                typeof shift.requiredOperators === "number" ? shift.requiredOperators : 1;
 
-  const gap = getFirstGapWithCapacity({
-    shiftStart: shift.startTime,
-    shiftEnd: shift.endTime,
-    requiredOperators: required,
-    slots,
-    slotTimes,
-    slotKeyPrefix: `${shift.id}-`,
-  });
-
-  if (gap) {
-    // 1) aggiungi lo slot nello store
-    addSlotToShift(shift.id, gap.start, gap.end);
-
-    // 2) precompila gli input della NUOVA riga
-    const newIndex = shift.operatorIds.length; // il nuovo è in coda
-    const newKey = `${shift.id}-${newIndex}`;
-    setSlotTimes(prev => ({
-      ...prev,
-      [newKey]: { start: gap.start, end: gap.end },
-    }));
-  } else {
-    // fallback (in teoria non serve se uncovered > 0)
-    addSlotToShift(shift.id, shift.startTime, shift.endTime);
-  }
-};
-
+              const firstGap = getFirstGapWithCapacity({
+                shiftStart: shift.startTime,
+                shiftEnd: shift.endTime,
+                requiredOperators: required,
+                slots: calcSlots,
+                slotTimes,
+                slotKeyPrefix: `${shift.id}-`,
+              });
+              
+              if (firstGap) {
+                // crea slot sul gap reale (es. 18:00–20:00)
+                addSlotToShift(shift.id, firstGap.start, firstGap.end);
+                
+                // precompila gli input della NUOVA riga
+                const newSlotIndex = shift.operatorIds.length; // nuovo in coda
+                const newSlotKey = `${shift.id}-${newSlotIndex}`;
+                setSlotTimes(prev => ({
+                  ...prev,
+                  [newSlotKey]: {
+                    start: firstGap.start,
+                    end: firstGap.end
+                  }
+                }));
+              } else {
+                // fallback sicurezza
+                addSlotToShift(shift.id, shift.startTime, shift.endTime);
+              }
+            };
             
             return (
               <div key={shift.id} className="rounded-lg border border-border overflow-hidden bg-background">
-                {/* Intestazione turno con nuovo componente */}
+                {/* Intestazione turno */}
                 <ShiftHeader
                   shift={shift}
                   slots={slots}
@@ -363,7 +352,7 @@ const handleCoverClick = () => {
                   onCover={handleCoverClick}
                 />
                 
-                {/* Activity type row */}
+                {/* Riga tipologia & elimina */}
                 <div className="px-4 py-2 bg-muted/20 border-b border-border">
                   <span className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded">
                     {shift.activityType || "Non specificato"}
@@ -392,7 +381,7 @@ const handleCoverClick = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {shift.operatorIds.map((operatorId, slotIndex) => {
+                    {shift.operatorIds.map((operatorId: string, slotIndex: number) => {
                       const isAssigned = operatorId && operatorId.trim() !== "";
                       
                       return (
@@ -517,7 +506,7 @@ const handleCoverClick = () => {
                             )}
                           </TableCell>
                           <TableCell>
-                            {/* Actions for individual slot removal will be handled in the operator column */}
+                            {/* Actions per slot: già gestite sopra */}
                           </TableCell>
                         </TableRow>
                       );
@@ -536,7 +525,7 @@ const handleCoverClick = () => {
         </div>
       </section>
 
-      {/* Dialog per modificare note */}
+      {/* Dialog note */}
       <Dialog open={!!editingNotes} onOpenChange={() => setEditingNotes(null)}>
         <DialogContent>
           <DialogHeader>
@@ -556,8 +545,12 @@ const handleCoverClick = () => {
         </DialogContent>
       </Dialog>
 
-
-      <OperatorAssignDialog open={assignOpen} onOpenChange={setAssignOpen} operators={currentShift ? operators.filter(op => !shifts.find(s => s.id === currentShift)?.operatorIds.includes(op.id)) : operators} onConfirm={onAssign} />
+      <OperatorAssignDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        operators={currentShift ? operators.filter(op => !shifts.find(s => s.id === currentShift)?.operatorIds.includes(op.id)) : operators}
+        onConfirm={onAssign}
+      />
     </main>;
 };
 export default EventDetail;
