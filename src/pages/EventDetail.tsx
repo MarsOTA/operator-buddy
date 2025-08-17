@@ -1,3 +1,4 @@
+import { getFirstGapWithCapacity } from "@/lib/coverage";
 import { Helmet } from "react-helmet-async";
 import { useParams } from "react-router-dom";
 import { useMemo, useState } from "react";
@@ -315,38 +316,42 @@ const EventDetail = () => {
               endTime: undefined,   // Viene gestito tramite slotTimes
             }));
 
-            const handleCoverClick = () => {
-              // Importa e usa la funzione per calcolare il primo gap
-              import("@/lib/gapCalculation").then(({ getFirstGap }) => {
-                const firstGap = getFirstGap({
-                  shiftStart: shift.startTime,
-                  shiftEnd: shift.endTime,
-                  slots,
-                  slotTimes,
-                  slotKeyPrefix: `${shift.id}-`,
-                });
-                
-                if (firstGap) {
-                  // Aggiungi il nuovo slot con i tempi del gap
-                  addSlotToShift(shift.id, firstGap.start, firstGap.end);
-                  
-                  // Imposta i tempi del nuovo slot nel prossimo slot vuoto
-                  const newSlotIndex = shift.operatorIds.length; // L'indice del nuovo slot sarà la lunghezza attuale
-                  const newSlotKey = `${shift.id}-${newSlotIndex}`;
-                  
-                  setSlotTimes(prev => ({
-                    ...prev,
-                    [newSlotKey]: {
-                      start: firstGap.start,
-                      end: firstGap.end
-                    }
-                  }));
-                } else {
-                  // Fallback se non ci sono gap (non dovrebbe succedere)
-                  addSlotToShift(shift.id);
-                }
-              });
-            };
+const handleCoverClick = () => {
+  // slots logici per il calcolo (gli orari effettivi li leggiamo da slotTimes)
+  const slots = shift.operatorIds.map((operatorId) => ({
+    operatorId: operatorId || undefined,
+    startTime: undefined,
+    endTime: undefined,
+  }));
+
+  const required = shift.requiredOperators ?? 1;
+
+  const gap = getFirstGapWithCapacity({
+    shiftStart: shift.startTime,
+    shiftEnd: shift.endTime,
+    requiredOperators: required,
+    slots,
+    slotTimes,
+    slotKeyPrefix: `${shift.id}-`,
+  });
+
+  if (gap) {
+    // 1) aggiungi lo slot nello store
+    addSlotToShift(shift.id, gap.start, gap.end);
+
+    // 2) precompila gli input della NUOVA riga
+    const newIndex = shift.operatorIds.length; // il nuovo è in coda
+    const newKey = `${shift.id}-${newIndex}`;
+    setSlotTimes(prev => ({
+      ...prev,
+      [newKey]: { start: gap.start, end: gap.end },
+    }));
+  } else {
+    // fallback (in teoria non serve se uncovered > 0)
+    addSlotToShift(shift.id, shift.startTime, shift.endTime);
+  }
+};
+
             
             return (
               <div key={shift.id} className="rounded-lg border border-border overflow-hidden bg-background">
