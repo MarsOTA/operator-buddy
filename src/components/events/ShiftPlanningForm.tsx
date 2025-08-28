@@ -26,13 +26,31 @@ type FormValues = z.infer<typeof FormSchema>;
 interface ShiftPlanningFormProps {
   onSubmit: (values: FormValues) => void;
   onReset?: () => void;
+  eventStartDate?: string; // YYYY-MM-DD format
 }
 
-const ShiftPlanningForm = ({ onSubmit, onReset }: ShiftPlanningFormProps) => {
+const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningFormProps) => {
   const [isOpen, setIsOpen] = useState(false);
   
+  // Create validation schema with event date constraint
+  const validationSchema = z.object({
+    date: z.date({ required_error: "Seleziona la data del turno" })
+      .refine((date) => {
+        if (!eventStartDate) return true;
+        const eventStart = new Date(eventStartDate);
+        return date >= eventStart;
+      }, {
+        message: "La data del turno non può essere antecedente alla data di inizio evento"
+      }),
+    startTime: z.string().min(1, "Seleziona ora di inizio"),
+    endTime: z.string().min(1, "Seleziona ora di fine"),
+    activityType: z.string().min(1, "Seleziona tipologia attività"),
+    numOperators: z.number().min(1, "Inserisci numero operatori").max(20, "Massimo 20 operatori"),
+    notes: z.string().optional(),
+  });
+
   const form = useForm<FormValues>({
-    resolver: zodResolver(FormSchema),
+    resolver: zodResolver(validationSchema),
     defaultValues: {
       date: undefined,
       startTime: "",

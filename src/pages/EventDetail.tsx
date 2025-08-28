@@ -409,12 +409,26 @@ const EventDetail = () => {
                   )}
                 </div>
               </div>
+
+              {/* Event Notes - displayed if present */}
+              {event.notes && (
+                <div className="flex items-start gap-3 mt-4 p-3 bg-muted/50 rounded-md">
+                  <StickyNote className="h-5 w-5 mt-0.5" style={{ color: '#72AD97', backgroundColor: 'transparent' }} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Note evento:</p>
+                    <p className="text-sm">{event.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Right side - Shift Planning Form (60%) */}
           <div className="flex-[0_0_60%]">
-            <ShiftPlanningForm onSubmit={handleShiftSubmit} />
+            <ShiftPlanningForm 
+              onSubmit={handleShiftSubmit} 
+              eventStartDate={event.startDate}
+            />
           </div>
         </div>
       </section>
@@ -610,7 +624,7 @@ const EventDetail = () => {
                               <StickyNote className="h-4 w-4 text-primary" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-80" align="center">
+                          <PopoverContent className="w-80 pointer-events-auto" align="center">
                             <div className="space-y-4">
                               <h4 className="font-medium">Note del turno</h4>
                               <div className="space-y-2">
@@ -632,7 +646,11 @@ const EventDetail = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setTempNotes("")}
+                                  onClick={() => {
+                                    setTempNotes("");
+                                    setEditingNotes(null);
+                                  }}
+                                  type="button"
                                 >
                                   <X className="h-4 w-4 mr-1" />
                                   Annulla
@@ -640,6 +658,7 @@ const EventDetail = () => {
                                 <Button
                                   size="sm"
                                   onClick={() => handleSaveNotes(`${row.id}-${row.slotIndex}`)}
+                                  type="button"
                                 >
                                   <Save className="h-4 w-4 mr-1" />
                                   Salva
