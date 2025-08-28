@@ -5,7 +5,7 @@ import { useAppStore, ACTIVITY_TYPES, type ActivityType } from "@/store/appStore
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, Users, Crown, UserPlus, Plus, Trash2, Edit2, Save, X, FileText, ArrowUpDown, ArrowUp, ArrowDown, ListChecks, Clock, Building2, MapPin, Calendar, Badge, Copy, Phone } from "lucide-react";
+import { CalendarIcon, Users, Crown, UserPlus, Plus, Trash2, Edit2, Save, X, FileText, ArrowUpDown, ArrowUp, ArrowDown, ListChecks, Clock, Building2, MapPin, Calendar, Badge, Copy, Phone, Mail, StickyNote } from "lucide-react";
 import OperatorAssignDialog from "@/components/events/OperatorAssignDialog";
 import ShiftPlanningForm from "@/components/events/ShiftPlanningForm";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,8 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const EventDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +45,9 @@ const EventDetail = () => {
   const [slotTimes, setSlotTimes] = useState<Record<string, { startTime: string; endTime: string }>>({});
   const [editingPhones, setEditingPhones] = useState<Record<string, string>>({});
   const [slotNotes, setSlotNotes] = useState<Record<string, string>>({});
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [selectedShiftForEmail, setSelectedShiftForEmail] = useState<any>(null);
+  const { toast } = useToast();
 
   // Inline editing states
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -150,6 +155,7 @@ const EventDetail = () => {
       updateShiftNotes(noteKey, tempNotes);
     }
     setEditingNotes(null);
+    setTempNotes("");
   };
 
   const handleCancelEditNotes = () => {
@@ -181,6 +187,38 @@ const EventDetail = () => {
       requiredOperators: 1,
       notes: undefined // Don't copy notes
     });
+  };
+
+  const handleSendEmail = (shift: any) => {
+    setSelectedShiftForEmail(shift);
+    setEmailModalOpen(true);
+  };
+
+  const confirmSendEmail = () => {
+    if (selectedShiftForEmail && selectedShiftForEmail.isAssigned) {
+      const operatorName = getOperatorName(selectedShiftForEmail.operatorId);
+      const slotKey = `${selectedShiftForEmail.id}-${selectedShiftForEmail.slotIndex}`;
+      const actualStartTime = slotTimes[slotKey]?.startTime || selectedShiftForEmail.startTime;
+      const actualEndTime = slotTimes[slotKey]?.endTime || selectedShiftForEmail.endTime;
+      
+      // Simulate email sending (can be replaced with real email service integration)
+      console.log("Invio email a:", {
+        operatore: operatorName,
+        data: selectedShiftForEmail.date,
+        oraInizio: actualStartTime,
+        oraFine: actualEndTime,
+        attivita: selectedShiftForEmail.activityType,
+        note: slotNotes[slotKey] || selectedShiftForEmail.notes || "Nessuna nota"
+      });
+      
+      toast({
+        title: "Email inviata!",
+        description: `Email di notifica turno inviata a ${operatorName}`,
+      });
+      
+      setEmailModalOpen(false);
+      setSelectedShiftForEmail(null);
+    }
   };
 
   // Ordinamento tabella turni per cognome operatore
@@ -559,43 +597,86 @@ const EventDetail = () => {
                     ) : "-"}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      {editingNotes === `${row.id}-${row.slotIndex}` ? (
-                        <>
-                          <Input
-                            value={tempNotes}
-                            onChange={(e) => setTempNotes(e.target.value)}
-                            className="h-8 text-sm flex-1"
-                            placeholder="Note turno"
-                            autoFocus
-                          />
-                          <Button variant="ghost" size="sm" onClick={() => handleSaveNotes(`${row.id}-${row.slotIndex}`)}>
-                            <Save className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={handleCancelEditNotes}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
+                    <div className="flex items-center justify-center">
+                      {(slotNotes[`${row.id}-${row.slotIndex}`] || row.notes) ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              aria-label="Visualizza/modifica note"
+                            >
+                              <StickyNote className="h-4 w-4 text-primary" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80" align="center">
+                            <div className="space-y-4">
+                              <h4 className="font-medium">Note del turno</h4>
+                              <div className="space-y-2">
+                                <Label htmlFor="note-edit">Contenuto</Label>
+                                <Textarea
+                                  id="note-edit"
+                                  value={tempNotes || slotNotes[`${row.id}-${row.slotIndex}`] || row.notes || ""}
+                                  onChange={(e) => setTempNotes(e.target.value)}
+                                  placeholder="Inserisci note per il turno..."
+                                  className="min-h-[80px]"
+                                  onFocus={() => {
+                                    if (!tempNotes) {
+                                      setTempNotes(slotNotes[`${row.id}-${row.slotIndex}`] || row.notes || "");
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setTempNotes("")}
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Annulla
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSaveNotes(`${row.id}-${row.slotIndex}`)}
+                                >
+                                  <Save className="h-4 w-4 mr-1" />
+                                  Salva
+                                </Button>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       ) : (
-                        <>
-                          <span className="text-sm flex-1">{slotNotes[`${row.id}-${row.slotIndex}`] || row.notes || '-'}</span>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => {
-                              setEditingNotes(`${row.id}-${row.slotIndex}`);
-                              setTempNotes(slotNotes[`${row.id}-${row.slotIndex}`] || row.notes || "");
-                            }}
-                            aria-label="Modifica note"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        </>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            setEditingNotes(`${row.id}-${row.slotIndex}`);
+                            setTempNotes("");
+                          }}
+                          aria-label="Aggiungi note"
+                        >
+                          <Plus className="h-4 w-4 text-muted-foreground" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      {row.isAssigned && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSendEmail(row)}
+                          aria-label={`Invia email a ${getOperatorName(row.operatorId)}`}
+                          title="Invia email all'operatore"
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -642,10 +723,13 @@ const EventDetail = () => {
       </section>
 
       {/* Dialog per modificare note */}
-      <Dialog open={!!editingNotes} onOpenChange={() => setEditingNotes(null)}>
+      <Dialog open={!!editingNotes} onOpenChange={() => {
+        setEditingNotes(null);
+        setTempNotes("");
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Modifica Note Turno</DialogTitle>
+            <DialogTitle>Aggiungi Note Turno</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Textarea 
@@ -653,6 +737,7 @@ const EventDetail = () => {
               onChange={e => setTempNotes(e.target.value)} 
               placeholder="Inserisci note per il turno" 
               className="min-h-[80px]"
+              autoFocus
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={handleCancelEditNotes}>
@@ -663,6 +748,63 @@ const EventDetail = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog per invio email */}
+      <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Invia email all'operatore
+            </DialogTitle>
+          </DialogHeader>
+          {selectedShiftForEmail && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <h4 className="font-medium">Riepilogo turno</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="font-medium">Operatore:</span>
+                    <p>{getOperatorName(selectedShiftForEmail.operatorId)}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Data:</span>
+                    <p>{selectedShiftForEmail.date}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Ora inizio:</span>
+                    <p>{slotTimes[`${selectedShiftForEmail.id}-${selectedShiftForEmail.slotIndex}`]?.startTime || selectedShiftForEmail.startTime}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Ora fine:</span>
+                    <p>{slotTimes[`${selectedShiftForEmail.id}-${selectedShiftForEmail.slotIndex}`]?.endTime || selectedShiftForEmail.endTime}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium">Attività:</span>
+                    <p>{selectedShiftForEmail.activityType || "Non specificata"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium">Note:</span>
+                    <p className="text-muted-foreground">
+                      {slotNotes[`${selectedShiftForEmail.id}-${selectedShiftForEmail.slotIndex}`] || selectedShiftForEmail.notes || "Nessuna nota"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEmailModalOpen(false)}>
+                  <X className="h-4 w-4 mr-1" />
+                  Annulla
+                </Button>
+                <Button onClick={confirmSendEmail}>
+                  <Mail className="h-4 w-4 mr-1" />
+                  Invia
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
