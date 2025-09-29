@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,7 +36,6 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
   // normalizza l'inizio evento a mezzanotte
   const eventStart = eventStartDate ? startOfDay(new Date(eventStartDate)) : undefined;
 
-  // schema senza "Pausa h."
   const validationSchema = z.object({
     date: z
       .date({ required_error: "Seleziona la data del turno" })
@@ -80,7 +80,8 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
       </h2>
 
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* 1 riga - 4 colonne: data, ora inizio, ora fine, n°operatori */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Data turno */}
           <div className="space-y-2">
             <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -120,54 +121,6 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
             )}
           </div>
 
-          {/* Mansione */}
-          <div className="space-y-2">
-            <Select onValueChange={(value) => form.setValue("role", value)}>
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="Seleziona mansione" />
-              </SelectTrigger>
-              <SelectContent className="pointer-events-auto">
-                <SelectItem value="Doorman">Doorman</SelectItem>
-                <SelectItem value="Security">Security</SelectItem>
-                <SelectItem value="Host">Host</SelectItem>
-                <SelectItem value="Supervisor">Supervisor</SelectItem>
-              </SelectContent>
-            </Select>
-            {form.formState.errors.role && (
-              <p className="text-sm text-destructive">{form.formState.errors.role.message}</p>
-            )}
-          </div>
-
-          {/* Tipologia attività */}
-          <div className="space-y-2">
-            <Select onValueChange={(value) => form.setValue("activityType", value)}>
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="Tipo evento" />
-              </SelectTrigger>
-              <SelectContent className="pointer-events-auto">
-                {ACTIVITY_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.formState.errors.activityType && (
-              <p className="text-sm text-destructive">{form.formState.errors.activityType.message}</p>
-            )}
-          </div>
-
-          {/* Note */}
-          <div className="space-y-2">
-            <Input
-              placeholder="Note per turno"
-              className="h-11"
-              {...form.register("notes")}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Ora inizio */}
           <div className="space-y-2">
             <Input
@@ -233,6 +186,55 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
               <p className="text-sm text-destructive">{form.formState.errors.numOperators.message}</p>
             )}
           </div>
+        </div>
+
+        {/* 2 riga - 2 colonne: Tipo Mansione, Tipo Attività */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Mansione */}
+          <div className="space-y-2">
+            <Select onValueChange={(value) => form.setValue("role", value)}>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Seleziona mansione" />
+              </SelectTrigger>
+              <SelectContent className="pointer-events-auto">
+                <SelectItem value="Doorman">Doorman</SelectItem>
+                <SelectItem value="Security">Security</SelectItem>
+                <SelectItem value="Host">Host</SelectItem>
+                <SelectItem value="Supervisor">Supervisor</SelectItem>
+              </SelectContent>
+            </Select>
+            {form.formState.errors.role && (
+              <p className="text-sm text-destructive">{form.formState.errors.role.message}</p>
+            )}
+          </div>
+
+          {/* Tipologia attività */}
+          <div className="space-y-2">
+            <Select onValueChange={(value) => form.setValue("activityType", value)}>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Tipo evento" />
+              </SelectTrigger>
+              <SelectContent className="pointer-events-auto">
+                {ACTIVITY_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.formState.errors.activityType && (
+              <p className="text-sm text-destructive">{form.formState.errors.activityType.message}</p>
+            )}
+          </div>
+        </div>
+
+        {/* 3 riga - 1 colonna: Note turno */}
+        <div className="space-y-2">
+          <Textarea
+            placeholder="Note per turno"
+            className="min-h-[44px] resize-none"
+            {...form.register("notes")}
+          />
         </div>
 
         {/* Submit */}

@@ -9,11 +9,12 @@ type Shift = {
   startTime: string;          // HH:mm
   endTime: string;            // HH:mm
   activityType: string;
+  role?: string | null;       // es. "Doorman", "Security", etc.
   operator?: string | null;   // es. "Verdi Anna" oppure null
   operatorId?: string | null; // se presente è la chiave operatore
-  phone?: string | null;      // opzionale per colonna TEL
   pauseHours?: number | null;
   numOperators?: number | null;
+  isTeamLeader?: boolean | null; // flag TL
 };
 
 type Props = {
@@ -47,12 +48,11 @@ export default function TaskList({ shifts, onUpdateShift }: Props) {
             <th>Ora inizio</th>
             <th>Ora fine</th>
             <th>Tipologia attività</th>
+            <th>Mansione</th>
             <th>Operatore</th>
-            <th>TEL</th>
+            <th>TL</th>
             <th>N° operatori</th>
             <th>Ore pausa</th>
-            <th>Ore effettive</th>
-            <th>Ore operatori</th>
             <th className="text-right pr-3">Azioni</th>
           </tr>
         </thead>
@@ -61,11 +61,20 @@ export default function TaskList({ shifts, onUpdateShift }: Props) {
             <Row key={s.id} shift={s} onUpdate={(patch) => onUpdateShift(s.id, patch)} />
           ))}
         </tbody>
-        <tfoot className="bg-muted/30 font-semibold">
+        <tfoot className="bg-muted/30">
           <tr>
-            <td colSpan={8} className="px-3 py-2 text-right">Totali:</td>
-            <td className="px-3 py-2">{totalEffective.toFixed(2)}</td>
-            <td className="px-3 py-2">{totalOperatorHours.toFixed(2)}</td>
+            <td colSpan={7} className="px-3 py-2 text-right">
+              <div className="font-bold" style={{ color: 'hsl(var(--shift-form-title))' }}>
+                <div>Totale Ore fatturate: {totalEffective.toFixed(2)}</div>
+                <div>Totale ore assegnate: {totalOperatorHours.toFixed(2)}</div>
+              </div>
+            </td>
+            <td className="px-3 py-2 text-right font-bold" style={{ color: 'hsl(var(--shift-form-title))' }}>
+              {totalEffective.toFixed(2)}
+            </td>
+            <td className="px-3 py-2 text-right font-bold" style={{ color: 'hsl(var(--shift-form-title))' }}>
+              {totalOperatorHours.toFixed(2)}
+            </td>
             <td />
           </tr>
         </tfoot>
@@ -78,6 +87,7 @@ function Row({ shift, onUpdate }: { shift: Shift; onUpdate: (patch: Partial<Shif
   const [isEditable, setIsEditable] = useState(false);
   const [opsVal, setOpsVal] = useState<string>(String(clampInt(shift.numOperators ?? 1, 1, 20)));
   const [pauseVal, setPauseVal] = useState<string>(String(shift.pauseHours ?? 0));
+  const [tlVal, setTlVal] = useState<boolean>(shift.isTeamLeader ?? false);
 
   const commitOps = () => {
     const n = clampInt(parseInt(opsVal || "1", 10), 1, 20);
@@ -93,18 +103,21 @@ function Row({ shift, onUpdate }: { shift: Shift; onUpdate: (patch: Partial<Shif
     if (n !== current) onUpdate({ pauseHours: n });
   };
 
+  const commitTL = () => {
+    const current = shift.isTeamLeader ?? false;
+    if (tlVal !== current) onUpdate({ isTeamLeader: tlVal });
+  };
+
   const effectiveHoursStr = calcEffectiveHours(shift.startTime, shift.endTime, shift.pauseHours ?? 0);
   const effectiveHours = parseFloat(effectiveHoursStr);
   const operators = clampInt(shift.numOperators ?? 1, 1, 20);
-  const operatorHours = isNaN(effectiveHours) ? "0.00" : (effectiveHours * operators).toFixed(2);
 
   const noName =
     !shift.operator ||
     (typeof shift.operator === "string" && shift.operator.trim() === "") ||
     (typeof shift.operator === "string" && shift.operator.toLowerCase().includes("assegna"));
   
-  const noPhone = !shift.phone || shift.phone === "-" || shift.phone.trim() === "";
-  const unassigned = (!shift.operatorId && noName) || noPhone;
+  const unassigned = !shift.operatorId && noName;
 
   const toggleEdit = () => {
     setIsEditable(!isEditable);
@@ -166,6 +179,19 @@ function Row({ shift, onUpdate }: { shift: Shift; onUpdate: (patch: Partial<Shif
           shift.activityType
         )}
       </td>
+
+      <td className="whitespace-nowrap">
+        {isEditable ? (
+          <Input
+            value={shift.role ?? ""}
+            onChange={(e) => onUpdate({ role: e.target.value })}
+            className="h-8 w-32"
+            placeholder="Mansione"
+          />
+        ) : (
+          shift.role ?? "—"
+        )}
+      </td>
       
       <td className={`whitespace-nowrap ${unassigned ? 'font-semibold text-orange-800' : ''}`}>
         {isEditable ? (
@@ -182,17 +208,20 @@ function Row({ shift, onUpdate }: { shift: Shift; onUpdate: (patch: Partial<Shif
           </>
         )}
       </td>
-      
-      <td className={`whitespace-nowrap ${unassigned ? 'font-semibold text-orange-800' : ''}`}>
+
+      <td className="whitespace-nowrap text-center">
         {isEditable ? (
-          <Input
-            value={shift.phone ?? ""}
-            onChange={(e) => onUpdate({ phone: e.target.value })}
-            className="h-8 w-32"
-            placeholder="Telefono"
+          <input
+            type="checkbox"
+            checked={tlVal}
+            onChange={(e) => {
+              setTlVal(e.target.checked);
+            }}
+            onBlur={commitTL}
+            className="h-4 w-4"
           />
         ) : (
-          shift.phone ?? "-"
+          <span className="text-lg">{shift.isTeamLeader ? "✓" : ""}</span>
         )}
       </td>
 
@@ -232,9 +261,6 @@ function Row({ shift, onUpdate }: { shift: Shift; onUpdate: (patch: Partial<Shif
           (shift.pauseHours ?? 0).toString()
         )}
       </td>
-
-      <td className="whitespace-nowrap">{effectiveHoursStr}</td>
-      <td className="whitespace-nowrap">{operatorHours}</td>
       
       <td className="text-right">
         <Button
