@@ -17,6 +17,7 @@ type FormValues = {
   startTime: string;
   endTime: string;
   activityType: string;
+  role: string;
   numOperators: number;
   notes?: string;
 };
@@ -48,6 +49,7 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
     startTime: z.string().min(1, "Seleziona ora di inizio"),
     endTime: z.string().min(1, "Seleziona ora di fine"),
     activityType: z.string().min(1, "Seleziona tipologia attività"),
+    role: z.string().min(1, "Seleziona mansione"),
     numOperators: z.number().min(1, "Inserisci numero operatori").max(20, "Massimo 20 operatori"),
     notes: z.string().optional(),
   });
@@ -59,6 +61,7 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
       startTime: "",
       endTime: "",
       activityType: "",
+      role: "",
       numOperators: 1,
       notes: "",
     },
@@ -117,11 +120,29 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
             )}
           </div>
 
+          {/* Mansione */}
+          <div className="space-y-2">
+            <Select onValueChange={(value) => form.setValue("role", value)}>
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Seleziona mansione" />
+              </SelectTrigger>
+              <SelectContent className="pointer-events-auto">
+                <SelectItem value="Doorman">Doorman</SelectItem>
+                <SelectItem value="Security">Security</SelectItem>
+                <SelectItem value="Host">Host</SelectItem>
+                <SelectItem value="Supervisor">Supervisor</SelectItem>
+              </SelectContent>
+            </Select>
+            {form.formState.errors.role && (
+              <p className="text-sm text-destructive">{form.formState.errors.role.message}</p>
+            )}
+          </div>
+
           {/* Tipologia attività */}
           <div className="space-y-2">
             <Select onValueChange={(value) => form.setValue("activityType", value)}>
               <SelectTrigger className="h-11">
-                <SelectValue placeholder="Seleziona tipologia" />
+                <SelectValue placeholder="Tipo evento" />
               </SelectTrigger>
               <SelectContent className="pointer-events-auto">
                 {ACTIVITY_TYPES.map((type) => (
@@ -139,7 +160,7 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
           {/* Note */}
           <div className="space-y-2">
             <Input
-              placeholder="Note per il turno..."
+              placeholder="Note per turno"
               className="h-11"
               {...form.register("notes")}
             />

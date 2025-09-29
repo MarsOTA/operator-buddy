@@ -39,6 +39,7 @@ const EventDetail = () => {
   const updateShiftDate = useAppStore(s => s.updateShiftDate);
   const updateShiftActivityType = useAppStore(s => s.updateShiftActivityType);
   const updateShiftPauseHours = useAppStore(s => s.updateShiftPauseHours);
+  const updateShiftRole = useAppStore(s => s.updateShiftRole);
   const deleteShift = useAppStore(s => s.deleteShift);
   
   const shifts = useAppStore(s => s.getShiftsByEvent(id!));
@@ -164,6 +165,7 @@ const EventDetail = () => {
       endTime: values.endTime,
       operatorIds: operatorIds,
       activityType: values.activityType as ActivityType,
+      role: values.role,
       requiredOperators: values.numOperators,
       notes: values.notes || undefined
     });
@@ -510,20 +512,6 @@ const EventDetail = () => {
               )}
             </div>
 
-            {/* Client field */}
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <Label className="font-medium min-w-0 flex-shrink-0">Cliente:</Label>
-              <span className="text-muted-foreground">{client?.name || "Cliente non trovato"}</span>
-            </div>
-
-            {/* Brand field */}
-            <div className="flex items-center gap-2">
-              <Badge className="h-4 w-4 text-muted-foreground" />
-              <Label className="font-medium min-w-0 flex-shrink-0">Brand:</Label>
-              <span className="text-muted-foreground">{brand?.name || "Brand non trovato"}</span>
-            </div>
-
             {/* Date field */}
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -562,6 +550,16 @@ const EventDetail = () => {
               ) : (
                 <span className="text-muted-foreground">{event.address || "Non specificato"}</span>
               )}
+            </div>
+
+            {/* Referente evento field */}
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <Label className="font-medium min-w-0 flex-shrink-0">Referente evento:</Label>
+              <span className="text-muted-foreground">
+                {event.contactName || "Non specificato"}
+                {event.contactName && event.contactPhone && ` - ${event.contactPhone}`}
+              </span>
             </div>
 
             {/* Notes field */}
@@ -639,31 +637,32 @@ const EventDetail = () => {
                       {sort.key !== 'endTime' && <ArrowUpDown className="h-4 w-4 opacity-50" />}
                     </div>
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
-                    onClick={() => toggleSort('activityType')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Tipologia</span>
-                      {sort.key === 'activityType' && (
-                        sort.dir === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                      )}
-                      {sort.key !== 'activityType' && <ArrowUpDown className="h-4 w-4 opacity-50" />}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
-                    onClick={() => toggleSort('operator')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Operatore</span>
-                      {sort.key === 'operator' && (
-                        sort.dir === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                      )}
-                      {sort.key !== 'operator' && <ArrowUpDown className="h-4 w-4 opacity-50" />}
-                    </div>
-                  </TableHead>
-                  <TableHead>Telefono</TableHead>
+                   <TableHead 
+                     className="cursor-pointer hover:bg-muted/50 select-none"
+                     onClick={() => toggleSort('activityType')}
+                   >
+                     <div className="flex items-center gap-2">
+                       <span>Tipologia</span>
+                       {sort.key === 'activityType' && (
+                         sort.dir === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                       )}
+                       {sort.key !== 'activityType' && <ArrowUpDown className="h-4 w-4 opacity-50" />}
+                     </div>
+                   </TableHead>
+                   <TableHead>Mansione</TableHead>
+                   <TableHead 
+                     className="cursor-pointer hover:bg-muted/50 select-none"
+                     onClick={() => toggleSort('operator')}
+                   >
+                     <div className="flex items-center gap-2">
+                       <span>Operatore</span>
+                       {sort.key === 'operator' && (
+                         sort.dir === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                       )}
+                       {sort.key !== 'operator' && <ArrowUpDown className="h-4 w-4 opacity-50" />}
+                     </div>
+                   </TableHead>
+                   <TableHead>Ore Pausa</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 select-none"
                     onClick={() => toggleSort('hours')}
@@ -758,74 +757,100 @@ const EventDetail = () => {
                         )}
                       </TableCell>
                       
-                      {/* Tipologia */}
-                      <TableCell className="whitespace-nowrap">
-                        {isEditing ? (
-                          <Select
-                            value={shift.activityType || ""}
-                            onValueChange={(value) => updateShiftActivityType(shift.id, value as ActivityType)}
-                          >
-                            <SelectTrigger className="h-8 w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ACTIVITY_TYPES.map(type => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          shift.activityType || "-"
-                        )}
-                      </TableCell>
-                      
-                      {/* Operatore */}
-                      <TableCell className={cn(
-                        "whitespace-nowrap",
-                        hasUnassignedWarning && "font-semibold text-orange-800"
-                      )}>
-                        <div className="flex items-center gap-2">
-                          {shift.isAssigned ? (
-                            <>
-                              <span>{getOperatorName(shift.operatorId)}</span>
-                              {isTeamLeader && (
-                                <Crown className="h-4 w-4 text-yellow-500" />
-                              )}
-                            </>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setCurrentShift(shift.id);
-                                setCurrentSlotIndex(shift.slotIndex);
-                                setAssignOpen(true);
-                              }}
-                              className="h-8 text-xs text-orange-600 border-orange-300 hover:bg-orange-50"
-                            >
-                              <UserPlus className="h-3 w-3 mr-1" />
-                              Assegna operatore
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Telefono */}
-                      <TableCell className={cn(
-                        "whitespace-nowrap",
-                        hasPhoneWarning && "font-semibold text-yellow-800"
-                      )}>
-                        {shift.isAssigned ? (
-                          <div className="flex items-center gap-2">
-                            <span>{getOperatorPhone(shift.operatorId)}</span>
-                            {hasPhoneWarning && (
-                              <span className="text-xs text-yellow-600">(mancante)</span>
-                            )}
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
+                       {/* Tipologia */}
+                       <TableCell className="whitespace-nowrap">
+                         {isEditing ? (
+                           <Select
+                             value={shift.activityType || ""}
+                             onValueChange={(value) => updateShiftActivityType(shift.id, value as ActivityType)}
+                           >
+                             <SelectTrigger className="h-8 w-32">
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               {ACTIVITY_TYPES.map(type => (
+                                 <SelectItem key={type} value={type}>{type}</SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                         ) : (
+                           shift.activityType || "-"
+                         )}
+                       </TableCell>
+
+                       {/* Mansione */}
+                       <TableCell className="whitespace-nowrap">
+                         {isEditing ? (
+                           <Select
+                             value={shift.role || ""}
+                             onValueChange={(value) => updateShiftRole && updateShiftRole(shift.id, value)}
+                           >
+                             <SelectTrigger className="h-8 w-32">
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="Doorman">Doorman</SelectItem>
+                               <SelectItem value="Security">Security</SelectItem>
+                               <SelectItem value="Host">Host</SelectItem>
+                               <SelectItem value="Supervisor">Supervisor</SelectItem>
+                             </SelectContent>
+                           </Select>
+                         ) : (
+                           shift.role || "-"
+                         )}
+                       </TableCell>
+                       
+                       {/* Operatore */}
+                       <TableCell className={cn(
+                         "whitespace-nowrap",
+                         hasUnassignedWarning && "font-semibold text-orange-800"
+                       )}>
+                         <div className="flex items-center gap-2">
+                           {shift.isAssigned ? (
+                             <>
+                               <span>{getOperatorName(shift.operatorId)}</span>
+                               {isTeamLeader && (
+                                 <Crown className="h-4 w-4 text-yellow-500" />
+                               )}
+                             </>
+                           ) : (
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => {
+                                 setCurrentShift(shift.id);
+                                 setCurrentSlotIndex(shift.slotIndex);
+                                 setAssignOpen(true);
+                               }}
+                               className="h-8 text-xs text-orange-600 border-orange-300 hover:bg-orange-50"
+                             >
+                               <UserPlus className="h-3 w-3 mr-1" />
+                               Assegna operatore
+                             </Button>
+                           )}
+                         </div>
+                       </TableCell>
+                       
+                       {/* Ore Pausa */}
+                       <TableCell className="whitespace-nowrap">
+                         {isEditing ? (
+                           <Input
+                             type="number"
+                             min="0"
+                             max="24"
+                             step="0.5"
+                             value={slotPauseHours}
+                             onChange={(e) => {
+                               const value = parseFloat(e.target.value) || 0;
+                               setPauseHours(prev => ({ ...prev, [slotKey]: value }));
+                               updateShiftPauseHours(shift.id, value);
+                             }}
+                             className="h-8 w-16"
+                           />
+                         ) : (
+                           slotPauseHours || "0"
+                         )}
+                       </TableCell>
                       
                       {/* Ore */}
                       <TableCell className="whitespace-nowrap">
@@ -948,28 +973,6 @@ const EventDetail = () => {
                               </TooltipContent>
                             </Tooltip>
 
-                            {/* Assign operator (if not assigned) */}
-                            {!shift.isAssigned && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      setCurrentShift(shift.id);
-                                      setCurrentSlotIndex(shift.slotIndex);
-                                      setAssignOpen(true);
-                                    }}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <UserPlus className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Assegna operatore</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
 
                             {/* Team leader toggle (if assigned) */}
                             {shift.isAssigned && (
@@ -1034,18 +1037,18 @@ const EventDetail = () => {
               </TableBody>
               
               {/* Table footer with totals */}
-              <tfoot className="bg-muted/50 font-semibold">
-                <TableRow>
-                  <TableCell colSpan={6} className="text-right">Totale ore pianificate:</TableCell>
-                  <TableCell>{totalHours.toFixed(1)}</TableCell>
-                  <TableCell colSpan={2}></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={6} className="text-right">Totale ore assegnate:</TableCell>
-                  <TableCell>{totalAssignedHours.toFixed(1)}</TableCell>
-                  <TableCell colSpan={2}></TableCell>
-                </TableRow>
-              </tfoot>
+               <tfoot className="bg-muted/50 font-semibold">
+                 <TableRow>
+                   <TableCell colSpan={7} className="text-right">Totale ore fatturate:</TableCell>
+                   <TableCell>{totalHours.toFixed(1)}</TableCell>
+                   <TableCell colSpan={2}></TableCell>
+                 </TableRow>
+                 <TableRow>
+                   <TableCell colSpan={7} className="text-right">Totale ore assegnate:</TableCell>
+                   <TableCell>{totalAssignedHours.toFixed(1)}</TableCell>
+                   <TableCell colSpan={2}></TableCell>
+                 </TableRow>
+               </tfoot>
             </Table>
           </div>
         )}

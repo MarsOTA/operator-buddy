@@ -79,6 +79,8 @@ export interface EventItem {
   startDate?: string; // YYYY-MM-DD
   endDate?: string; // YYYY-MM-DD
   notes?: string;
+  contactName?: string;
+  contactPhone?: string;
 }
 
 export interface Task {
@@ -120,6 +122,7 @@ export interface Shift {
   endTime: string; // HH:mm
   operatorIds: ID[];
   activityType?: ActivityType;
+  role?: string;
   teamLeaderId?: ID;
   requiredOperators: number;
   notes?: string;
@@ -168,6 +171,7 @@ export interface AppState {
   updateShiftTime: (shiftId: ID, data: { startTime?: string; endTime?: string }) => void;
   updateShiftDate: (shiftId: ID, date: string) => void;
   updateShiftActivityType: (shiftId: ID, activityType: ActivityType | undefined) => void;
+  updateShiftRole: (shiftId: ID, role: string) => void;
   updateShiftPauseHours: (shiftId: ID, pauseHours: number) => void;
   deleteShift: (shiftId: ID) => void;
   getShiftsByEvent: (eventId: ID) => Shift[];
@@ -535,6 +539,14 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           shifts: state.shifts.map((s) =>
             s.id === shiftId ? { ...s, activityType } : s
+          ),
+        }));
+      },
+
+      updateShiftRole: (shiftId, role) => {
+        set((state) => ({
+          shifts: state.shifts.map((s) =>
+            s.id === shiftId ? { ...s, role } : s
           ),
         }));
       },
