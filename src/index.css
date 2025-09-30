@@ -70,6 +70,13 @@ All colors MUST be HSL.
     /* Event info background color #EAEFF4 */
     --event-info-background: 215 20% 96%;
     --table-header-background: 215 20% 96%;
+    
+    /* SVG design colors */
+    --primary-green: 156 45% 65%; /* #72AD97 */
+    --light-green-bg: 159 21% 92%; /* #ECF3F1 */
+    --info-background: 214 31% 93%; /* #EAEFF4 */
+    --notes-icon-color: 150 34% 56%; /* #72AD97 */
+    --accent-light: 172 44% 96%; /* #E9F2EF */
   }
 
   .dark {

@@ -445,11 +445,11 @@ const EventDetail = () => {
       {/* Two-Column Layout: Event Info (50%) and Shift Form (50%) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Event Info */}
-        <Card className="p-6 bg-[hsl(var(--event-info-background))]">
+        <Card className="p-6" style={{ backgroundColor: 'hsl(var(--info-background))' }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold text-[#72AD97]">Informazioni Evento</h2>
+              <FileText className="h-5 w-5" style={{ color: 'hsl(var(--primary-green))' }} />
+              <h2 className="text-lg font-semibold" style={{ color: 'hsl(var(--primary-green))' }}>Informazioni Evento</h2>
             </div>
             <Button
               variant="ghost"
@@ -499,7 +499,9 @@ const EventDetail = () => {
           <div className="space-y-4">
             {/* Activity Code field */}
             <div className="flex items-center gap-2">
-              <Badge className="h-4 w-4 text-muted-foreground" />
+              <div className="h-6 w-6 rounded flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--primary-green))' }}>
+                <MapPin className="h-4 w-4 text-white" />
+              </div>
               <Label className="font-medium min-w-0 flex-shrink-0">Codice attività:</Label>
               {editingField ? (
                 <Input
@@ -514,7 +516,9 @@ const EventDetail = () => {
 
             {/* Date field */}
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div className="h-6 w-6 rounded flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--primary-green))' }}>
+                <Calendar className="h-4 w-4 text-white" />
+              </div>
               <Label className="font-medium min-w-0 flex-shrink-0">Periodo:</Label>
               {editingField ? (
                 <div className="flex items-center gap-2 flex-1">
@@ -539,7 +543,9 @@ const EventDetail = () => {
 
             {/* Address field */}
             <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <div className="h-6 w-6 rounded flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--primary-green))' }}>
+                <Building2 className="h-4 w-4 text-white" />
+              </div>
               <Label className="font-medium min-w-0 flex-shrink-0">Indirizzo:</Label>
               {editingField ? (
                 <Input
@@ -554,7 +560,9 @@ const EventDetail = () => {
 
             {/* Referente evento field */}
             <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
+              <div className="h-6 w-6 rounded flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--primary-green))' }}>
+                <Phone className="h-4 w-4 text-white" />
+              </div>
               <Label className="font-medium min-w-0 flex-shrink-0">Referente evento:</Label>
               <span className="text-muted-foreground">
                 {event.contactName || "Non specificato"}
@@ -564,7 +572,9 @@ const EventDetail = () => {
 
             {/* Notes field */}
             <div className="flex items-start gap-2">
-              <StickyNote className="h-4 w-4 text-muted-foreground mt-1" />
+              <div className="h-6 w-6 rounded flex items-center justify-center mt-1" style={{ backgroundColor: 'hsl(var(--primary-green))' }}>
+                <StickyNote className="h-4 w-4 text-white" />
+              </div>
               <Label className="font-medium min-w-0 flex-shrink-0 mt-1">Note:</Label>
               {editingField ? (
                 <Textarea
@@ -599,7 +609,7 @@ const EventDetail = () => {
         ) : (
           <div className="rounded-md border">
             <Table>
-              <TableHeader className="bg-[hsl(var(--table-header-background))]">
+              <TableHeader style={{ backgroundColor: 'hsl(var(--light-green-bg))' }}>
                 <TableRow>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 select-none"
@@ -1037,15 +1047,23 @@ const EventDetail = () => {
               </TableBody>
               
               {/* Table footer with totals */}
-               <tfoot className="bg-muted/50 font-semibold">
+               <tfoot style={{ backgroundColor: 'hsl(var(--accent-light))' }}>
                  <TableRow>
-                   <TableCell colSpan={7} className="text-right">Totale ore fatturate:</TableCell>
-                   <TableCell>{totalHours.toFixed(1)}</TableCell>
+                   <TableCell colSpan={7} className="text-right font-bold" style={{ color: 'hsl(var(--primary-green))' }}>
+                     Totale ore fatturate:
+                   </TableCell>
+                   <TableCell className="font-bold" style={{ color: 'hsl(var(--primary-green))' }}>
+                     {totalHours.toFixed(1)}
+                   </TableCell>
                    <TableCell colSpan={2}></TableCell>
                  </TableRow>
                  <TableRow>
-                   <TableCell colSpan={7} className="text-right">Totale ore assegnate:</TableCell>
-                   <TableCell>{totalAssignedHours.toFixed(1)}</TableCell>
+                   <TableCell colSpan={7} className="text-right font-bold" style={{ color: 'hsl(var(--primary-green))' }}>
+                     Totale ore assegnate:
+                   </TableCell>
+                   <TableCell className="font-bold" style={{ color: 'hsl(var(--primary-green))' }}>
+                     {totalAssignedHours.toFixed(1)}
+                   </TableCell>
                    <TableCell colSpan={2}></TableCell>
                  </TableRow>
                </tfoot>

@@ -74,8 +74,8 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
   };
 
   return (
-    <div className="rounded-lg p-6 border border-border mr-[30px]" style={{ backgroundColor: 'hsl(var(--shift-form-background))' }}>
-      <h2 className="text-lg font-extrabold mb-6" style={{ color: 'hsl(var(--shift-form-title))', fontFamily: "'Mulish', sans-serif" }}>
+    <div className="rounded-lg p-6 border border-border mr-[30px]" style={{ backgroundColor: 'hsl(var(--light-green-bg))' }}>
+      <h2 className="text-lg font-extrabold mb-6" style={{ color: 'hsl(var(--primary-green))', fontFamily: "'Mulish', sans-serif" }}>
         Inserimento turno
       </h2>
 
@@ -93,7 +93,7 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
                     !form.watch("date") && "text-muted-foreground"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" style={{ color: 'hsl(var(--shift-form-icons))' }} />
+                  <CalendarIcon className="mr-2 h-4 w-4" style={{ color: 'hsl(var(--notes-icon-color))' }} />
                   {form.watch("date")
                     ? form.watch("date")?.toLocaleDateString("it-IT")
                     : "Seleziona data"}
@@ -168,7 +168,7 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
                     if (current < 20) form.setValue("numOperators", current + 1);
                   }}
                 >
-                  <ChevronUp className="h-4 w-4" style={{ color: "#72AD97" }} />
+                  <ChevronUp className="h-4 w-4" style={{ color: 'hsl(var(--primary-green))' }} />
                 </button>
                 <button
                   type="button"
@@ -178,7 +178,7 @@ const ShiftPlanningForm = ({ onSubmit, onReset, eventStartDate }: ShiftPlanningF
                     if (current > 1) form.setValue("numOperators", current - 1);
                   }}
                 >
-                  <ChevronDown className="h-4 w-4" style={{ color: "#72AD97" }} />
+                  <ChevronDown className="h-4 w-4" style={{ color: 'hsl(var(--primary-green))' }} />
                 </button>
               </div>
             </div>

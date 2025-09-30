@@ -42,7 +42,7 @@ export default function TaskList({ shifts, onUpdateShift }: Props) {
   return (
     <div className="overflow-x-auto rounded-md border">
       <table className="w-full text-sm">
-        <thead className="bg-[hsl(var(--table-header-background))]">
+        <thead style={{ backgroundColor: 'hsl(var(--light-green-bg))' }}>
           <tr className="[&>th]:px-3 [&>th]:py-2 text-left">
             <th>Data</th>
             <th>Ora inizio</th>
@@ -61,18 +61,18 @@ export default function TaskList({ shifts, onUpdateShift }: Props) {
             <Row key={s.id} shift={s} onUpdate={(patch) => onUpdateShift(s.id, patch)} />
           ))}
         </tbody>
-        <tfoot className="bg-muted/30">
+        <tfoot style={{ backgroundColor: 'hsl(var(--accent-light))' }}>
           <tr>
             <td colSpan={7} className="px-3 py-2 text-right">
-              <div className="font-bold" style={{ color: 'hsl(var(--shift-form-title))' }}>
+              <div className="font-bold" style={{ color: 'hsl(var(--primary-green))' }}>
                 <div>Totale Ore fatturate: {totalEffective.toFixed(2)}</div>
                 <div>Totale ore assegnate: {totalOperatorHours.toFixed(2)}</div>
               </div>
             </td>
-            <td className="px-3 py-2 text-right font-bold" style={{ color: 'hsl(var(--shift-form-title))' }}>
+            <td className="px-3 py-2 text-right font-bold" style={{ color: 'hsl(var(--primary-green))' }}>
               {totalEffective.toFixed(2)}
             </td>
-            <td className="px-3 py-2 text-right font-bold" style={{ color: 'hsl(var(--shift-form-title))' }}>
+            <td className="px-3 py-2 text-right font-bold" style={{ color: 'hsl(var(--primary-green))' }}>
               {totalOperatorHours.toFixed(2)}
             </td>
             <td />
