@@ -19,7 +19,7 @@ import OperatorProfile from "./pages/OperatorProfile";
 import Header from "./components/layout/Header";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// 👇 NUOVO: import del componente UI
+// 👇 NUOVO: import del componente UI per la demo
 import OperatorShiftView from "./components/OperatorShiftView";
 
 const queryClient = new QueryClient();
@@ -115,14 +115,14 @@ const App = () => (
               }
             />
 
-            {/* 👇 NUOVO: rotta di anteprima per la nuova UI operatore */}
+            {/* 👇 NUOVO: rotta DEMO pubblica (senza login) */}
             <Route
-              path="/operator/shift/preview"
+              path="/demo/operator-shift"
               element={
-                <ProtectedRoute>
+                <>
                   <Header />
                   <OperatorShiftView />
-                </ProtectedRoute>
+                </>
               }
             />
 
