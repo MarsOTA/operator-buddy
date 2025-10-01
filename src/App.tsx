@@ -1,7 +1,4 @@
 import React from "react";
-import OperatorShiftView from "./components/OperatorShiftView";
-export default function App(){ return <OperatorShiftView/>; }
-import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +19,9 @@ import OperatorProfile from "./pages/OperatorProfile";
 import Header from "./components/layout/Header";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// 👇 NUOVO: import del componente UI
+import OperatorShiftView from "./components/OperatorShiftView";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -33,60 +33,99 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Header />
-                <Index />
-              </ProtectedRoute>
-            } />
-            <Route path="/events" element={
-              <ProtectedRoute>
-                <Header />
-                <EventsList />
-              </ProtectedRoute>
-            } />
-            <Route path="/events/new" element={
-              <ProtectedRoute>
-                <Header />
-                <CreateEvent />
-              </ProtectedRoute>
-            } />
-            <Route path="/events/:id" element={
-              <ProtectedRoute>
-                <Header />
-                <EventDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="/clienti" element={
-              <ProtectedRoute>
-                <Header />
-                <Clienti />
-              </ProtectedRoute>
-            } />
-            <Route path="/notification-settings" element={
-              <ProtectedRoute>
-                <Header />
-                <NotificationSettingsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/operator/dashboard" element={
-              <ProtectedRoute>
-                <Header />
-                <OperatorDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/operator/profile" element={
-              <ProtectedRoute>
-                <Header />
-                <OperatorProfile />
-              </ProtectedRoute>
-            } />
-            <Route path="/operator/shift/:shiftId" element={
-              <ProtectedRoute>
-                <Header />
-                <OperatorShiftDetail />
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <Index />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/events"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <EventsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/events/new"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <CreateEvent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/events/:id"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <EventDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/clienti"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <Clienti />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notification-settings"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <NotificationSettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operator/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <OperatorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operator/profile"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <OperatorProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operator/shift/:shiftId"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <OperatorShiftDetail />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* 👇 NUOVO: rotta di anteprima per la nuova UI operatore */}
+            <Route
+              path="/operator/shift/preview"
+              element={
+                <ProtectedRoute>
+                  <Header />
+                  <OperatorShiftView />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
