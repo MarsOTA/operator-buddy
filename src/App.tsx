@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import EventsList from "./pages/EventsList";
@@ -19,7 +20,7 @@ import OperatorProfile from "./pages/OperatorProfile";
 import Header from "./components/layout/Header";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// 👇 NUOVO: import del componente UI per la demo
+// 👇 nuovo import: la UI dell’operatore
 import OperatorShiftView from "./components/OperatorShiftView";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+
             <Route
               path="/"
               element={
@@ -42,6 +44,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/events"
               element={
@@ -51,6 +54,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/events/new"
               element={
@@ -60,6 +64,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/events/:id"
               element={
@@ -69,6 +74,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/clienti"
               element={
@@ -78,6 +84,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/notification-settings"
               element={
@@ -87,6 +94,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/operator/dashboard"
               element={
@@ -96,6 +104,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/operator/profile"
               element={
@@ -105,6 +114,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/operator/shift/:shiftId"
               element={
@@ -115,7 +125,7 @@ const App = () => (
               }
             />
 
-            {/* 👇 NUOVO: rotta DEMO pubblica (senza login) */}
+            {/* 🔹 DEMO PUBBLICA: non richiede login */}
             <Route
               path="/demo/operator-shift"
               element={
