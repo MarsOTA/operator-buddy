@@ -35,13 +35,16 @@ const EventsList = () => {
   const navigate = useNavigate();
   const events = useAppStore((s) => s.events);
   const brands = useAppStore((s) => s.brands);
+  const clients = useAppStore((s) => s.clients);
   const operators = useAppStore((s) => s.operators);
   const getShiftsByEvent = useAppStore((s) => s.getShiftsByEvent);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const eventData = useMemo(() => {
     return events.map((ev) => {
-      const brand = brands.find((b) => b.id === ev.brandId)?.name || "—";
+      const client = clients.find((c) => c.id === ev.clientId)?.name || "";
+      const brand = brands.find((b) => b.id === ev.brandId)?.name || "";
+      const committente = client && brand ? `${client} - ${brand}` : client || brand || "—";
       const shifts = getShiftsByEvent(ev.id).sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
       
       // Calcolo totale operatori assegnati
@@ -62,14 +65,14 @@ const EventsList = () => {
       return {
         id: ev.id,
         title: ev.title,
-        brand,
+        committente,
         totalOperators,
         totalBilledHours: totalBilledHours.toFixed(2),
         totalAssignedHours: totalAssignedHours.toFixed(2),
         shifts,
       };
     });
-  }, [events, brands, getShiftsByEvent]);
+  }, [events, brands, clients, getShiftsByEvent]);
 
   return (
     <main className="container py-8">
@@ -92,13 +95,13 @@ const EventsList = () => {
           Nessun evento. Crea il primo evento.
         </section>
       ) : (
-        <Accordion type="single" collapsible className="space-y-2">
+        <Accordion type="multiple" className="space-y-2">
           {eventData.map((ev) => (
             <AccordionItem key={ev.id} value={ev.id} className="rounded-lg border border-border overflow-hidden">
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-accent/30 hover:bg-accent/50 transition-colors [&[data-state=open]]:bg-accent">
                 <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 w-full items-center text-sm pr-2">
                   <div className="font-medium text-left truncate">{ev.title}</div>
-                  <div className="w-32 text-left text-muted-foreground truncate">{ev.brand}</div>
+                  <div className="w-48 text-left text-muted-foreground truncate">{ev.committente}</div>
                   <div className="w-24 text-center">{ev.totalOperators}</div>
                   <div className="w-24 text-center">{ev.totalBilledHours}</div>
                   <div className="w-24 text-center">{ev.totalAssignedHours}</div>
@@ -119,42 +122,54 @@ const EventsList = () => {
                           <th>Ora fine</th>
                           <th>Tipologia attività</th>
                           <th>Mansione</th>
-                          <th>Operatori</th>
-                          <th className="text-center">N° op.</th>
+                          <th>Operatore</th>
                           <th className="text-center">Ore pausa</th>
                           <th className="text-right">Ore eff.</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {ev.shifts.map((shift) => {
-                          const assignedOperators = shift.operatorIds
-                            .map(id => operators.find(op => op.id === id)?.name)
-                            .filter(Boolean)
-                            .join(", ") || "—";
+                        {ev.shifts.flatMap((shift) => {
                           const isUnassigned = shift.operatorIds.length === 0;
                           const effectiveHours = calcEffectiveHours(shift.startTime, shift.endTime, shift.pauseHours ?? 0);
                           
-                          return (
-                            <tr 
-                              key={shift.id} 
-                              className={`[&>td]:px-3 [&>td]:py-2 border-t transition-colors ${
-                                isUnassigned ? 'bg-orange-100 hover:bg-orange-200' : 'hover:bg-muted/50'
-                              }`}
-                            >
-                              <td className="whitespace-nowrap">{safeItDate(shift.date)}</td>
-                              <td className="whitespace-nowrap">{shift.startTime}</td>
-                              <td className="whitespace-nowrap">{shift.endTime}</td>
-                              <td className="whitespace-nowrap">{shift.activityType ?? "—"}</td>
-                              <td className="whitespace-nowrap">{shift.role ?? "—"}</td>
-                              <td className={`${isUnassigned ? 'font-semibold text-orange-800' : ''}`}>
-                                {assignedOperators}
-                                {isUnassigned && <span className="ml-1 text-xs text-orange-600">(non assegnato)</span>}
-                              </td>
-                              <td className="text-center">{shift.operatorIds.length}</td>
-                              <td className="text-center">{shift.pauseHours ?? 0}</td>
-                              <td className="text-right">{effectiveHours.toFixed(2)}</td>
-                            </tr>
-                          );
+                          if (isUnassigned) {
+                            return (
+                              <tr 
+                                key={shift.id} 
+                                className="[&>td]:px-3 [&>td]:py-2 border-t transition-colors bg-orange-100 hover:bg-orange-200"
+                              >
+                                <td className="whitespace-nowrap">{safeItDate(shift.date)}</td>
+                                <td className="whitespace-nowrap">{shift.startTime}</td>
+                                <td className="whitespace-nowrap">{shift.endTime}</td>
+                                <td className="whitespace-nowrap">{shift.activityType ?? "—"}</td>
+                                <td className="whitespace-nowrap">{shift.role ?? "—"}</td>
+                                <td className="font-semibold text-orange-800">
+                                  <span className="text-xs text-orange-600">(non assegnato)</span>
+                                </td>
+                                <td className="text-center">{shift.pauseHours ?? 0}</td>
+                                <td className="text-right">{effectiveHours.toFixed(2)}</td>
+                              </tr>
+                            );
+                          }
+                          
+                          return shift.operatorIds.map((operatorId) => {
+                            const operatorName = operators.find(op => op.id === operatorId)?.name || "—";
+                            return (
+                              <tr 
+                                key={`${shift.id}-${operatorId}`} 
+                                className="[&>td]:px-3 [&>td]:py-2 border-t transition-colors hover:bg-muted/50"
+                              >
+                                <td className="whitespace-nowrap">{safeItDate(shift.date)}</td>
+                                <td className="whitespace-nowrap">{shift.startTime}</td>
+                                <td className="whitespace-nowrap">{shift.endTime}</td>
+                                <td className="whitespace-nowrap">{shift.activityType ?? "—"}</td>
+                                <td className="whitespace-nowrap">{shift.role ?? "—"}</td>
+                                <td>{operatorName}</td>
+                                <td className="text-center">{shift.pauseHours ?? 0}</td>
+                                <td className="text-right">{effectiveHours.toFixed(2)}</td>
+                              </tr>
+                            );
+                          });
                         })}
                       </tbody>
                     </table>
