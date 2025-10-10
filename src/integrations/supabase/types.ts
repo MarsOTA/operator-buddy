@@ -14,7 +14,192 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          operator_id: string
+          read: boolean
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          operator_id: string
+          read?: boolean
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          operator_id?: string
+          read?: boolean
+          title?: string
+        }
+        Relationships: []
+      }
+      operators: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          operator_id: string | null
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          operator_id?: string | null
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operator_id?: string | null
+          role?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          operator_id: string
+          subscription: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          operator_id: string
+          subscription: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operator_id?: string
+          subscription?: Json
+        }
+        Relationships: []
+      }
+      shift_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          operator_id: string
+          shift_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          operator_id: string
+          shift_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operator_id?: string
+          shift_id?: string
+        }
+        Relationships: []
+      }
+      shift_checkins: {
+        Row: {
+          check_in_time: string | null
+          check_out_time: string | null
+          created_at: string
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          notes: string | null
+          operator_id: string
+          shift_id: string
+        }
+        Insert: {
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          notes?: string | null
+          operator_id: string
+          shift_id: string
+        }
+        Update: {
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          notes?: string | null
+          operator_id?: string
+          shift_id?: string
+        }
+        Relationships: []
+      }
+      shifts: {
+        Row: {
+          activity_type: string | null
+          created_at: string
+          date: string
+          end_time: string
+          event_id: string
+          id: string
+          pause_hours: number | null
+          role: string | null
+          start_time: string
+        }
+        Insert: {
+          activity_type?: string | null
+          created_at?: string
+          date: string
+          end_time: string
+          event_id: string
+          id: string
+          pause_hours?: number | null
+          role?: string | null
+          start_time: string
+        }
+        Update: {
+          activity_type?: string | null
+          created_at?: string
+          date?: string
+          end_time?: string
+          event_id?: string
+          id?: string
+          pause_hours?: number | null
+          role?: string | null
+          start_time?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
