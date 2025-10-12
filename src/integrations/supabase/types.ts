@@ -14,30 +14,152 @@ export type Database = {
   }
   public: {
     Tables: {
+      brands: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          id: string
+          name: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brands_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          vat_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id: string
+          name: string
+          phone?: string | null
+          vat_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          vat_number?: string | null
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          address: string
+          brand_id: string | null
+          client_id: string | null
+          created_at: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          start_date: string | null
+          status: string | null
+          title: string
+        }
+        Insert: {
+          address: string
+          brand_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string | null
+          title: string
+        }
+        Update: {
+          address?: string
+          brand_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
+          event_id: string | null
           id: string
           message: string
           operator_id: string
           read: boolean
+          shift_id: string | null
           title: string
+          type: string | null
         }
         Insert: {
           created_at?: string
+          event_id?: string | null
           id?: string
           message: string
           operator_id: string
           read?: boolean
+          shift_id?: string | null
           title: string
+          type?: string | null
         }
         Update: {
           created_at?: string
+          event_id?: string | null
           id?: string
           message?: string
           operator_id?: string
           read?: boolean
+          shift_id?: string | null
           title?: string
+          type?: string | null
         }
         Relationships: []
       }
@@ -172,9 +294,13 @@ export type Database = {
           end_time: string
           event_id: string
           id: string
+          location: string | null
+          notes: string | null
           pause_hours: number | null
+          required_operators: number
           role: string | null
           start_time: string
+          team_leader_id: string | null
         }
         Insert: {
           activity_type?: string | null
@@ -183,9 +309,13 @@ export type Database = {
           end_time: string
           event_id: string
           id: string
+          location?: string | null
+          notes?: string | null
           pause_hours?: number | null
+          required_operators?: number
           role?: string | null
           start_time: string
+          team_leader_id?: string | null
         }
         Update: {
           activity_type?: string | null
@@ -194,9 +324,49 @@ export type Database = {
           end_time?: string
           event_id?: string
           id?: string
+          location?: string | null
+          notes?: string | null
           pause_hours?: number | null
+          required_operators?: number
           role?: string | null
           start_time?: string
+          team_leader_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_team_leader_id_fkey"
+            columns: ["team_leader_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -205,10 +375,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "operator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -335,6 +511,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "operator"],
+    },
   },
 } as const

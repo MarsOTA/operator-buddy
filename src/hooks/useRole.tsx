@@ -38,7 +38,13 @@ export const useRole = () => {
           return;
         }
 
-        setProfile(data);
+        if (data) {
+          setProfile({
+            id: data.id,
+            operator_id: data.operator_id,
+            role: data.role as UserRole
+          });
+        }
       } catch (err) {
         console.error('Error in fetchProfile:', err);
         setError('Failed to fetch user profile');

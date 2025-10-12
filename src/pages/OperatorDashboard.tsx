@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { OperatorEventsList } from '@/components/operator/OperatorEventsList';
 import { Card, CardContent } from '@/components/ui/card';
-import { User, Calendar, Settings } from 'lucide-react';
+import { User, Calendar, Settings, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function OperatorDashboard() {
@@ -66,6 +66,13 @@ export default function OperatorDashboard() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/operator/attendance')}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Presenze
+          </Button>
           <Button
             variant="outline"
             onClick={() => navigate('/operator/profile')}
