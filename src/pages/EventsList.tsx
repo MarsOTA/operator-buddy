@@ -2,11 +2,13 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import CreateEventModal from "@/components/events/CreateEventModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import type { Shift } from "@/store/appStore";
+import EventsDateFilter from "@/components/events/EventsDateFilter";
 
 const calcEffectiveHours = (start: string, end: string, pauseHours: number = 0): number => {
   try {
@@ -52,6 +54,13 @@ const EventsList = () => {
   const operators = useAppStore((s) => s.operators);
   const getShiftsByEvent = useAppStore((s) => s.getShiftsByEvent);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>({
+    startDate: null,
+    endDate: null,
+  });
 
   const dayData = useMemo(() => {
     // Step 1: Estrarre tutti i turni con le loro date e eventi
@@ -134,6 +143,32 @@ const EventsList = () => {
     return result;
   }, [events, brands, clients, getShiftsByEvent]);
 
+  // Filtra i dati per data
+  const filteredDayData = useMemo(() => {
+    if (!dateFilter.startDate && !dateFilter.endDate) {
+      return dayData;
+    }
+
+    return dayData.filter((day) => {
+      const dayDate = new Date(day.date + "T00:00:00");
+
+      if (dateFilter.startDate && !dateFilter.endDate) {
+        return dayDate >= dateFilter.startDate;
+      }
+
+      if (!dateFilter.startDate && dateFilter.endDate) {
+        return dayDate <= dateFilter.endDate;
+      }
+
+      return (
+        dateFilter.startDate &&
+        dateFilter.endDate &&
+        dayDate >= dateFilter.startDate &&
+        dayDate <= dateFilter.endDate
+      );
+    });
+  }, [dayData, dateFilter]);
+
   return (
     <main className="container py-8">
       <Helmet>
@@ -143,20 +178,35 @@ const EventsList = () => {
       </Helmet>
 
       <section className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Lista Eventi</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">Lista Eventi</h1>
+          {(dateFilter.startDate || dateFilter.endDate) && (
+            <Badge variant="secondary" className="gap-1">
+              <CalendarIcon className="h-3 w-3" />
+              Filtrato
+            </Badge>
+          )}
+        </div>
         <Button onClick={() => setCreateModalOpen(true)}>
           <Plus />
           Crea evento
         </Button>
       </section>
 
-      {dayData.length === 0 ? (
+      <EventsDateFilter
+        dateFilter={dateFilter}
+        onDateFilterChange={setDateFilter}
+      />
+
+      {filteredDayData.length === 0 ? (
         <section className="rounded-lg border border-border p-8 text-center text-muted-foreground">
-          Nessun evento programmato. Crea il primo evento.
+          {dateFilter.startDate || dateFilter.endDate
+            ? "Nessun evento trovato per le date selezionate."
+            : "Nessun evento programmato. Crea il primo evento."}
         </section>
       ) : (
         <Accordion type="multiple" className="space-y-4">
-          {dayData.map((day) => (
+          {filteredDayData.map((day) => (
             <AccordionItem 
               key={day.date} 
               value={day.date} 

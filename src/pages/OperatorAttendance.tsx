@@ -81,43 +81,42 @@ export default function OperatorAttendance() {
         setOperatorName(operator.name);
       }
 
-      let query = supabase
-        .from('shift_checkins')
+      const { data: shiftsData } = await supabase
+        .from('shifts')
         .select(`
           id,
-          check_in_time,
-          check_out_time,
-          location_lat,
-          location_lng,
-          notes,
-          shifts!inner (
-            id,
-            date,
-            start_time,
-            end_time,
-            events (
-              title,
-              address,
-              clients (name),
-              brands (name)
-            )
+          date,
+          start_time,
+          end_time,
+          events (
+            title,
+            address,
+            clients (name),
+            brands (name)
           )
         `)
+        .gte('date', dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '1970-01-01')
+        .lte('date', dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '2100-12-31');
+
+      if (!shiftsData) {
+        throw new Error('Unable to load shifts');
+      }
+
+      const { data: checkinsData } = await supabase
+        .from('shift_checkins')
+        .select('*')
         .eq('operator_id', profile.operator_id)
         .order('check_in_time', { ascending: false });
 
-      if (dateRange?.from) {
-        query = query.gte('shifts.date', format(dateRange.from, 'yyyy-MM-dd'));
-      }
-      if (dateRange?.to) {
-        query = query.lte('shifts.date', format(dateRange.to, 'yyyy-MM-dd'));
-      }
+      const attendanceWithShifts = (checkinsData || []).map(checkin => {
+        const shift = shiftsData.find(s => s.id === checkin.shift_id);
+        return {
+          ...checkin,
+          shifts: shift || null
+        };
+      });
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      setAttendanceData(data || []);
+      setAttendanceData(attendanceWithShifts as any);
     } catch (error) {
       console.error('Error loading attendance:', error);
       toast({

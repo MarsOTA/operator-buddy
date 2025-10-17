@@ -47,8 +47,7 @@ export const useSupabasePushNotifications = () => {
             .from('push_subscriptions')
             .select('id')
             .eq('operator_id', profile.operator_id)
-            .eq('endpoint', existingSubscription.endpoint)
-            .single();
+            .maybeSingle();
 
           setSubscription(!error && !!data);
         } else {
@@ -100,16 +99,23 @@ export const useSupabasePushNotifications = () => {
       const auth = btoa(String.fromCharCode(...new Uint8Array(pushSubscription.getKey('auth')!)));
 
       // Save subscription to Supabase
+      const subscriptionData = {
+        endpoint: pushSubscription.endpoint,
+        subscription: {
+          endpoint: pushSubscription.endpoint,
+          keys: {
+            p256dh,
+            auth
+          }
+        }
+      };
+
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
           operator_id: profile.operator_id,
-          endpoint: pushSubscription.endpoint,
-          p256dh_key: p256dh,
-          auth_key: auth
-        }, {
-          onConflict: 'operator_id'
-        });
+          ...subscriptionData
+        } as any);
 
       if (error) {
         console.error('Error saving subscription to Supabase:', error);

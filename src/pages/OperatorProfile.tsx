@@ -15,7 +15,7 @@ interface OperatorData {
   name: string;
   email?: string;
   phone?: string;
-  role: string;
+  role?: string;
   fiscal_code?: string;
 }
 
@@ -146,15 +146,17 @@ export default function OperatorProfile() {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="role">Ruolo</Label>
-              <Input
-                id="role"
-                value={operatorData.role}
-                readOnly
-                className="bg-muted"
-              />
-            </div>
+            {operatorData.role && (
+              <div className="space-y-2">
+                <Label htmlFor="role">Ruolo</Label>
+                <Input
+                  id="role"
+                  value={operatorData.role}
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            )}
 
             {operatorData.email && (
               <div className="space-y-2">

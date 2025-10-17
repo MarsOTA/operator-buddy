@@ -60,33 +60,31 @@ export default function OperatorDashboard() {
 
           // Load upcoming shifts
           const { data: shiftsData } = await supabase
-            .from('shift_assignments')
+            .from('shifts')
             .select(`
-              shifts (
+              id,
+              date,
+              start_time,
+              end_time,
+              activity_type,
+              required_operators,
+              events (
                 id,
-                date,
-                start_time,
-                end_time,
-                activity_type,
-                required_operators,
-                events (
-                  id,
-                  title,
-                  address,
-                  clients (
-                    name
-                  )
+                title,
+                address,
+                clients (
+                  name
                 )
-              )
+              ),
+              shift_assignments!inner(operator_id)
             `)
-            .eq('operator_id', profile.operator_id)
-            .gte('shifts.date', new Date().toISOString().split('T')[0])
-            .order('shifts.date', { ascending: true })
+            .eq('shift_assignments.operator_id', profile.operator_id)
+            .gte('date', new Date().toISOString().split('T')[0])
+            .order('date', { ascending: true })
             .limit(5);
 
           if (shiftsData) {
-            const shifts = shiftsData.map(item => item.shifts).filter(Boolean);
-            setUpcomingShifts(shifts);
+            setUpcomingShifts(shiftsData as any);
           }
 
           // Load notifications

@@ -123,7 +123,9 @@ export default function OperatorShiftDetail() {
             }
           },
           team_leader: data.team_leader,
-          operators: data.shift_assignments?.map((assignment: any) => assignment.operators) || []
+          operators: Array.isArray(data.shift_assignments)
+            ? data.shift_assignments.map((assignment: any) => assignment.operators)
+            : []
         };
 
         setShift(transformedShift);
