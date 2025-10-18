@@ -181,15 +181,10 @@ const EventsList = () => {
               {selectedEventIds.length} selezionati
             </Badge>}
         </div>
-        <div className="flex gap-2">
-          {filteredAndSortedEvents.length > 0 && <Button variant="outline" onClick={handleExpandAll}>
-              {expandedEventIds.length === filteredAndSortedEvents.length ? "Chiudi tutto" : "Espandi tutto"}
-            </Button>}
-          <Button onClick={() => setCreateModalOpen(true)}>
-            <Plus />
-            Crea evento
-          </Button>
-        </div>
+        <Button onClick={() => setCreateModalOpen(true)}>
+          <Plus />
+          Crea evento
+        </Button>
       </section>
 
       <EventsFilters dateFilter={dateFilter} onDateFilterChange={setDateFilter} clientFilter={clientFilter} onClientFilterChange={setClientFilter} brandFilter={brandFilter} onBrandFilterChange={setBrandFilter} sortBy={sortBy} onSortByChange={setSortBy} selectedCount={selectedEventIds.length} onExport={handleExport} clients={clients} brands={brands} />
@@ -197,12 +192,17 @@ const EventsList = () => {
       {filteredAndSortedEvents.length === 0 ? <section className="rounded-lg border border-border p-8 text-center text-muted-foreground">
           {dateFilter.startDate || dateFilter.endDate || clientFilter || brandFilter ? "Nessun evento trovato per i filtri selezionati." : "Nessun evento programmato. Crea il primo evento."}
         </section> : <div className="space-y-4">
-          {/* Select all checkbox */}
-          <div className="flex items-center gap-2 px-2">
-            <Checkbox checked={allSelected} onCheckedChange={handleSelectAll} />
-            <span className="text-sm text-muted-foreground">
-              Seleziona tutti ({filteredAndSortedEvents.length})
-            </span>
+          {/* Select all checkbox and expand all button */}
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={allSelected} onCheckedChange={handleSelectAll} />
+              <span className="text-sm text-muted-foreground">
+                Seleziona tutti ({filteredAndSortedEvents.length})
+              </span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExpandAll}>
+              {expandedEventIds.length === filteredAndSortedEvents.length ? "Chiudi tutto" : "Espandi tutto"}
+            </Button>
           </div>
 
           {/* Event rows */}
