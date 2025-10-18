@@ -53,6 +53,7 @@ const EventsList = () => {
   const [brandFilter, setBrandFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("date-asc");
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+  const [expandedEventIds, setExpandedEventIds] = useState<string[]>([]);
 
   // Processa gli eventi in una struttura flat
   const processedEvents = useMemo(() => {
@@ -182,6 +183,14 @@ const EventsList = () => {
     toast.success(`${selectedEventIds.length} eventi esportati con successo`);
   };
 
+  const handleExpandAll = () => {
+    if (expandedEventIds.length === filteredAndSortedEvents.length) {
+      setExpandedEventIds([]);
+    } else {
+      setExpandedEventIds(filteredAndSortedEvents.map(ev => ev.id));
+    }
+  };
+
   const allSelected = filteredAndSortedEvents.length > 0 && 
     selectedEventIds.length === filteredAndSortedEvents.length;
 
@@ -202,10 +211,17 @@ const EventsList = () => {
             </Badge>
           )}
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-          <Plus />
-          Crea evento
-        </Button>
+        <div className="flex gap-2">
+          {filteredAndSortedEvents.length > 0 && (
+            <Button variant="outline" onClick={handleExpandAll}>
+              {expandedEventIds.length === filteredAndSortedEvents.length ? "Chiudi tutto" : "Espandi tutto"}
+            </Button>
+          )}
+          <Button onClick={() => setCreateModalOpen(true)}>
+            <Plus />
+            Crea evento
+          </Button>
+        </div>
       </section>
 
       <EventsFilters
@@ -251,6 +267,12 @@ const EventsList = () => {
                 operators={operators}
                 isSelected={selectedEventIds.includes(event.id)}
                 onToggleSelect={handleToggleSelect}
+                isExpanded={expandedEventIds.includes(event.id)}
+                onToggleExpand={(id) => {
+                  setExpandedEventIds(prev =>
+                    prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]
+                  );
+                }}
               />
             ))}
           </div>

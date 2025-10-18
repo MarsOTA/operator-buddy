@@ -26,6 +26,8 @@ interface EventRowProps {
   operators: Array<{ id: string; name: string }>;
   isSelected: boolean;
   onToggleSelect: (eventId: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: (eventId: string) => void;
 }
 
 const calcEffectiveHours = (start: string, end: string, pauseHours: number = 0): number => {
@@ -47,12 +49,19 @@ export default function EventRow({
   operators,
   isSelected,
   onToggleSelect,
+  isExpanded,
+  onToggleExpand,
 }: EventRowProps) {
   const navigate = useNavigate();
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
-      <Accordion type="single" collapsible>
+      <Accordion 
+        type="single" 
+        collapsible 
+        value={isExpanded ? event.id : ""}
+        onValueChange={(value) => onToggleExpand(event.id)}
+      >
         <AccordionItem value={event.id} className="border-0">
           <AccordionTrigger className="px-4 py-3 hover:no-underline bg-accent/30 hover:bg-accent/50 transition-colors [&[data-state=open]]:bg-accent">
             <div className="grid grid-cols-[auto_1fr_auto_auto_auto] sm:grid-cols-[auto_120px_1fr_auto_auto_auto] gap-3 sm:gap-4 w-full items-center text-sm pr-2">
@@ -69,16 +78,10 @@ export default function EventRow({
                 {event.dateFormatted}
               </div>
 
-              {/* Nome evento - cliccabile */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/events/${event.id}`);
-                }}
-                className="font-semibold text-left text-primary hover:underline truncate"
-              >
+              {/* Nome evento */}
+              <div className="font-semibold text-left truncate">
                 {event.title}
-              </button>
+              </div>
 
               {/* Cliente */}
               <div className="hidden sm:block text-left text-muted-foreground truncate min-w-[120px]">
