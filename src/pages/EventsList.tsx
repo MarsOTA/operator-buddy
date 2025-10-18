@@ -1,14 +1,15 @@
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/appStore";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
+import { Plus, CalendarIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import CreateEventModal from "@/components/events/CreateEventModal";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import type { Shift } from "@/store/appStore";
-import EventsDateFilter from "@/components/events/EventsDateFilter";
+import { Checkbox } from "@/components/ui/checkbox";
+import EventsFilters from "@/components/events/EventsFilters";
+import EventRow from "@/components/events/EventRow";
+import { exportEventsToExcel } from "@/utils/eventsExport";
+import { toast } from "sonner";
 
 const calcEffectiveHours = (start: string, end: string, pauseHours: number = 0): number => {
   try {
@@ -24,35 +25,22 @@ const calcEffectiveHours = (start: string, end: string, pauseHours: number = 0):
   }
 };
 
-const safeItDate = (iso: string) => {
+const formatDateDDMMYY = (dateStr: string): string => {
   try {
-    const d = new Date(iso);
-    return d.toLocaleDateString("it-IT");
-  } catch {
-    return iso;
-  }
-};
-
-const formatDateHeader = (dateStr: string): string => {
-  try {
-    const d = new Date(dateStr + 'T00:00:00');
-    const dayOfWeek = d.toLocaleDateString("it-IT", { weekday: "long" });
-    const day = d.getDate();
-    const month = d.toLocaleDateString("it-IT", { month: "long" });
-    const year = d.getFullYear();
-    return `${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)} ${day} ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
+    const [year, month, day] = dateStr.split("-");
+    return `${day}/${month}/${year.slice(-2)}`;
   } catch {
     return dateStr;
   }
 };
 
 const EventsList = () => {
-  const navigate = useNavigate();
   const events = useAppStore((s) => s.events);
   const brands = useAppStore((s) => s.brands);
   const clients = useAppStore((s) => s.clients);
   const operators = useAppStore((s) => s.operators);
   const getShiftsByEvent = useAppStore((s) => s.getShiftsByEvent);
+  
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<{
     startDate: Date | null;
@@ -61,113 +49,141 @@ const EventsList = () => {
     startDate: null,
     endDate: null,
   });
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [brandFilter, setBrandFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<string>("date-asc");
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
 
-  const dayData = useMemo(() => {
-    // Step 1: Estrarre tutti i turni con le loro date e eventi
-    const allShiftsWithEvents = events.flatMap((ev) => {
-      const client = clients.find((c) => c.id === ev.clientId)?.name || "";
-      const brand = brands.find((b) => b.id === ev.brandId)?.name || "";
-      const committente = client && brand ? `${client} - ${brand}` : client || brand || "—";
-      const shifts = getShiftsByEvent(ev.id);
+  // Processa gli eventi in una struttura flat
+  const processedEvents = useMemo(() => {
+    const flatEvents = events.map(event => {
+      const shifts = getShiftsByEvent(event.id);
+      const client = clients.find(c => c.id === event.clientId);
+      const brand = brands.find(b => b.id === event.brandId);
       
-      return shifts.map((shift) => ({
-        shift,
-        event: {
-          id: ev.id,
-          title: ev.title,
-          committente,
-        },
-        date: shift.date,
-      }));
-    });
-
-    // Step 2: Raggruppare per data
-    const shiftsByDate = allShiftsWithEvents.reduce((acc, item) => {
-      if (!acc[item.date]) acc[item.date] = [];
-      acc[item.date].push(item);
-      return acc;
-    }, {} as Record<string, typeof allShiftsWithEvents>);
-
-    // Step 3: Raggruppare per evento all'interno di ogni giorno
-    const result = Object.entries(shiftsByDate).map(([date, items]) => {
-      // Raggruppiamo per evento
-      const eventGroups = items.reduce((acc, item) => {
-        if (!acc[item.event.id]) {
-          acc[item.event.id] = {
-            event: item.event,
-            shifts: [],
-          };
-        }
-        acc[item.event.id].shifts.push(item.shift);
-        return acc;
-      }, {} as Record<string, { event: typeof items[0]["event"]; shifts: Shift[] }>);
-
-      // Calcoliamo le statistiche per ogni evento nel giorno
-      const eventsWithStats = Object.values(eventGroups).map((eventGroup) => {
-        const shifts = eventGroup.shifts.sort((a, b) => a.startTime.localeCompare(b.startTime));
-        
-        const totalOperators = shifts.reduce((sum, shift) => sum + shift.operatorIds.length, 0);
-        const totalBilledHours = shifts.reduce((sum, shift) => {
-          const hours = calcEffectiveHours(shift.startTime, shift.endTime, shift.pauseHours ?? 0);
-          return sum + hours;
-        }, 0);
-        const totalAssignedHours = shifts.reduce((sum, shift) => {
-          const hours = calcEffectiveHours(shift.startTime, shift.endTime, shift.pauseHours ?? 0);
-          return sum + (hours * shift.operatorIds.length);
-        }, 0);
-
-        return {
-          ...eventGroup.event,
-          shifts,
-          totalOperators,
-          totalBilledHours: totalBilledHours.toFixed(2),
-          totalAssignedHours: totalAssignedHours.toFixed(2),
-        };
-      });
-
-      // Calcoliamo le statistiche totali per il giorno
-      const totalEventsInDay = eventsWithStats.length;
-      const totalOperatorsInDay = eventsWithStats.reduce((sum, ev) => sum + ev.totalOperators, 0);
-      const totalBilledHoursInDay = eventsWithStats.reduce((sum, ev) => sum + parseFloat(ev.totalBilledHours), 0);
-
+      const totalOperators = shifts.reduce((sum, s) => sum + s.operatorIds.length, 0);
+      const totalAssignedHours = shifts.reduce((sum, s) => {
+        const hours = calcEffectiveHours(s.startTime, s.endTime, s.pauseHours ?? 0);
+        return sum + (hours * s.operatorIds.length);
+      }, 0);
+      
+      const firstShiftDate = shifts.length > 0 
+        ? shifts.sort((a, b) => a.date.localeCompare(b.date))[0].date 
+        : null;
+      
       return {
-        date,
-        dateFormatted: formatDateHeader(date),
-        events: eventsWithStats,
-        totalEvents: totalEventsInDay,
-        totalOperators: totalOperatorsInDay,
-        totalBilledHours: totalBilledHoursInDay.toFixed(2),
+        id: event.id,
+        title: event.title,
+        clientId: event.clientId || "",
+        brandId: event.brandId || "",
+        clientName: client?.name || "—",
+        brandName: brand?.name || "",
+        date: firstShiftDate || "",
+        dateFormatted: firstShiftDate ? formatDateDDMMYY(firstShiftDate) : "—",
+        totalOperators,
+        totalAssignedHours: totalAssignedHours.toFixed(2),
+        shifts: shifts.map(s => ({
+          id: s.id,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          activityType: s.activityType,
+          role: s.role,
+          pauseHours: s.pauseHours ?? 0,
+          operatorIds: s.operatorIds,
+        })),
       };
-    }).sort((a, b) => a.date.localeCompare(b.date)); // Ordine cronologico
+    }).filter(ev => ev.date !== "");
 
-    return result;
-  }, [events, brands, clients, getShiftsByEvent]);
+    return flatEvents;
+  }, [events, clients, brands, getShiftsByEvent]);
 
-  // Filtra i dati per data
-  const filteredDayData = useMemo(() => {
-    if (!dateFilter.startDate && !dateFilter.endDate) {
-      return dayData;
+  // Filtra e ordina gli eventi
+  const filteredAndSortedEvents = useMemo(() => {
+    let filtered = processedEvents;
+
+    // Filtro date
+    if (dateFilter.startDate || dateFilter.endDate) {
+      filtered = filtered.filter(ev => {
+        if (!ev.date) return false;
+        const eventDate = new Date(ev.date + "T00:00:00");
+        
+        if (dateFilter.startDate && dateFilter.endDate) {
+          return eventDate >= dateFilter.startDate && eventDate <= dateFilter.endDate;
+        }
+        if (dateFilter.startDate) return eventDate >= dateFilter.startDate;
+        if (dateFilter.endDate) return eventDate <= dateFilter.endDate;
+        return true;
+      });
     }
 
-    return dayData.filter((day) => {
-      const dayDate = new Date(day.date + "T00:00:00");
+    // Filtro cliente
+    if (clientFilter) {
+      filtered = filtered.filter(ev => ev.clientId === clientFilter);
+    }
 
-      if (dateFilter.startDate && !dateFilter.endDate) {
-        return dayDate >= dateFilter.startDate;
+    // Filtro brand
+    if (brandFilter) {
+      filtered = filtered.filter(ev => ev.brandId === brandFilter);
+    }
+
+    // Ordinamento
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "date-asc":
+          return a.date.localeCompare(b.date);
+        case "date-desc":
+          return b.date.localeCompare(a.date);
+        case "client-asc":
+          return a.clientName.localeCompare(b.clientName);
+        case "client-desc":
+          return b.clientName.localeCompare(a.clientName);
+        default:
+          return 0;
       }
-
-      if (!dateFilter.startDate && dateFilter.endDate) {
-        return dayDate <= dateFilter.endDate;
-      }
-
-      return (
-        dateFilter.startDate &&
-        dateFilter.endDate &&
-        dayDate >= dateFilter.startDate &&
-        dayDate <= dateFilter.endDate
-      );
     });
-  }, [dayData, dateFilter]);
+
+    return sorted;
+  }, [processedEvents, dateFilter, clientFilter, brandFilter, sortBy]);
+
+  const handleToggleSelect = (eventId: string) => {
+    setSelectedEventIds(prev => 
+      prev.includes(eventId) 
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedEventIds.length === filteredAndSortedEvents.length) {
+      setSelectedEventIds([]);
+    } else {
+      setSelectedEventIds(filteredAndSortedEvents.map(ev => ev.id));
+    }
+  };
+
+  const handleExport = () => {
+    if (selectedEventIds.length === 0) {
+      toast.error("Seleziona almeno un evento da esportare");
+      return;
+    }
+
+    const eventsToExport = filteredAndSortedEvents
+      .filter(ev => selectedEventIds.includes(ev.id))
+      .map(ev => ({
+        id: ev.id,
+        title: ev.title,
+        date: ev.date,
+        clientName: ev.clientName,
+        brandName: ev.brandName,
+        shifts: ev.shifts,
+      }));
+
+    exportEventsToExcel(eventsToExport, selectedEventIds, operators);
+    toast.success(`${selectedEventIds.length} eventi esportati con successo`);
+  };
+
+  const allSelected = filteredAndSortedEvents.length > 0 && 
+    selectedEventIds.length === filteredAndSortedEvents.length;
 
   return (
     <main className="container py-8">
@@ -180,10 +196,9 @@ const EventsList = () => {
       <section className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold">Lista Eventi</h1>
-          {(dateFilter.startDate || dateFilter.endDate) && (
+          {selectedEventIds.length > 0 && (
             <Badge variant="secondary" className="gap-1">
-              <CalendarIcon className="h-3 w-3" />
-              Filtrato
+              {selectedEventIds.length} selezionati
             </Badge>
           )}
         </div>
@@ -193,145 +208,53 @@ const EventsList = () => {
         </Button>
       </section>
 
-      <EventsDateFilter
+      <EventsFilters
         dateFilter={dateFilter}
         onDateFilterChange={setDateFilter}
+        clientFilter={clientFilter}
+        onClientFilterChange={setClientFilter}
+        brandFilter={brandFilter}
+        onBrandFilterChange={setBrandFilter}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        selectedCount={selectedEventIds.length}
+        onExport={handleExport}
+        clients={clients}
+        brands={brands}
       />
 
-      {filteredDayData.length === 0 ? (
+      {filteredAndSortedEvents.length === 0 ? (
         <section className="rounded-lg border border-border p-8 text-center text-muted-foreground">
-          {dateFilter.startDate || dateFilter.endDate
-            ? "Nessun evento trovato per le date selezionate."
+          {dateFilter.startDate || dateFilter.endDate || clientFilter || brandFilter
+            ? "Nessun evento trovato per i filtri selezionati."
             : "Nessun evento programmato. Crea il primo evento."}
         </section>
       ) : (
-        <Accordion type="multiple" className="space-y-4">
-          {filteredDayData.map((day) => (
-            <AccordionItem 
-              key={day.date} 
-              value={day.date} 
-              className="rounded-lg border-2 border-primary/20 overflow-hidden"
-            >
-              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-primary/5 hover:bg-primary/10 transition-colors [&[data-state=open]]:bg-primary/15">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full pr-2">
-                  <div className="font-semibold text-base flex-1 text-left">
-                    📅 {day.dateFormatted}
-                  </div>
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    <span className="whitespace-nowrap">
-                      <span className="font-medium text-foreground">{day.totalEvents}</span> {day.totalEvents === 1 ? "evento" : "eventi"}
-                    </span>
-                    <span className="whitespace-nowrap">
-                      <span className="font-medium text-foreground">{day.totalOperators}</span> {day.totalOperators === 1 ? "operatore" : "operatori"}
-                    </span>
-                    <span className="whitespace-nowrap">
-                      <span className="font-medium text-foreground">{day.totalBilledHours}</span> ore fatt.
-                    </span>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4 pt-2 bg-background">
-                <Accordion type="multiple" className="space-y-2">
-                  {day.events.map((ev) => (
-                    <AccordionItem 
-                      key={ev.id} 
-                      value={ev.id} 
-                      className="rounded-lg border border-border overflow-hidden"
-                    >
-                      <AccordionTrigger className="px-4 py-2 hover:no-underline bg-accent/30 hover:bg-accent/50 transition-colors [&[data-state=open]]:bg-accent">
-                        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 w-full items-center text-sm pr-2">
-                          <div className="font-medium text-left truncate">{ev.title}</div>
-                          <div className="w-48 text-left text-muted-foreground truncate">{ev.committente}</div>
-                          <div className="w-24 text-center">{ev.totalOperators}</div>
-                          <div className="w-24 text-center">{ev.totalBilledHours}</div>
-                          <div className="w-24 text-center">{ev.totalAssignedHours}</div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4 pt-2">
-                        {ev.shifts.length === 0 ? (
-                          <div className="text-sm text-muted-foreground py-4 text-center">
-                            Nessun turno per questo evento.
-                          </div>
-                        ) : (
-                          <div className="overflow-x-auto rounded-md border">
-                            <table className="w-full text-sm">
-                              <thead className="bg-muted">
-                                <tr className="[&>th]:px-3 [&>th]:py-2 text-left">
-                                  <th>Data</th>
-                                  <th>Ora inizio</th>
-                                  <th>Ora fine</th>
-                                  <th>Tipologia attività</th>
-                                  <th>Mansione</th>
-                                  <th>Operatore</th>
-                                  <th className="text-center">Ore pausa</th>
-                                  <th className="text-right">Ore eff.</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {ev.shifts.flatMap((shift) => {
-                                  const isUnassigned = shift.operatorIds.length === 0;
-                                  const effectiveHours = calcEffectiveHours(shift.startTime, shift.endTime, shift.pauseHours ?? 0);
-                                  
-                                  if (isUnassigned) {
-                                    return (
-                                      <tr 
-                                        key={shift.id} 
-                                        className="[&>td]:px-3 [&>td]:py-2 border-t transition-colors bg-orange-100 hover:bg-orange-200"
-                                      >
-                                        <td className="whitespace-nowrap">{safeItDate(shift.date)}</td>
-                                        <td className="whitespace-nowrap">{shift.startTime}</td>
-                                        <td className="whitespace-nowrap">{shift.endTime}</td>
-                                        <td className="whitespace-nowrap">{shift.activityType ?? "—"}</td>
-                                        <td className="whitespace-nowrap">{shift.role ?? "—"}</td>
-                                        <td className="font-semibold text-orange-800">
-                                          <span className="text-xs text-orange-600">(non assegnato)</span>
-                                        </td>
-                                        <td className="text-center">{shift.pauseHours ?? 0}</td>
-                                        <td className="text-right">{effectiveHours.toFixed(2)}</td>
-                                      </tr>
-                                    );
-                                  }
-                                  
-                                  return shift.operatorIds.map((operatorId) => {
-                                    const operatorName = operators.find(op => op.id === operatorId)?.name || "—";
-                                    return (
-                                      <tr 
-                                        key={`${shift.id}-${operatorId}`} 
-                                        className="[&>td]:px-3 [&>td]:py-2 border-t transition-colors hover:bg-muted/50"
-                                      >
-                                        <td className="whitespace-nowrap">{safeItDate(shift.date)}</td>
-                                        <td className="whitespace-nowrap">{shift.startTime}</td>
-                                        <td className="whitespace-nowrap">{shift.endTime}</td>
-                                        <td className="whitespace-nowrap">{shift.activityType ?? "—"}</td>
-                                        <td className="whitespace-nowrap">{shift.role ?? "—"}</td>
-                                        <td>{operatorName}</td>
-                                        <td className="text-center">{shift.pauseHours ?? 0}</td>
-                                        <td className="text-right">{effectiveHours.toFixed(2)}</td>
-                                      </tr>
-                                    );
-                                  });
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                        <div className="mt-3 flex justify-end">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => navigate(`/events/${ev.id}`)}
-                          >
-                            Vedi dettagli evento
-                          </Button>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <div className="space-y-4">
+          {/* Select all checkbox */}
+          <div className="flex items-center gap-2 px-2">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={handleSelectAll}
+            />
+            <span className="text-sm text-muted-foreground">
+              Seleziona tutti ({filteredAndSortedEvents.length})
+            </span>
+          </div>
+
+          {/* Event rows */}
+          <div className="space-y-3">
+            {filteredAndSortedEvents.map(event => (
+              <EventRow
+                key={event.id}
+                event={event}
+                operators={operators}
+                isSelected={selectedEventIds.includes(event.id)}
+                onToggleSelect={handleToggleSelect}
+              />
+            ))}
+          </div>
+        </div>
       )}
       
       <CreateEventModal 
