@@ -10,7 +10,6 @@ import EventsFilters from "@/components/events/EventsFilters";
 import EventRow from "@/components/events/EventRow";
 import { exportEventsToExcel } from "@/utils/eventsExport";
 import { toast } from "sonner";
-
 const calcEffectiveHours = (start: string, end: string, pauseHours: number = 0): number => {
   try {
     const [sh, sm] = start.split(":").map(Number);
@@ -24,7 +23,6 @@ const calcEffectiveHours = (start: string, end: string, pauseHours: number = 0):
     return 0;
   }
 };
-
 const formatDateDDMMYY = (dateStr: string): string => {
   try {
     const [year, month, day] = dateStr.split("-");
@@ -33,21 +31,19 @@ const formatDateDDMMYY = (dateStr: string): string => {
     return dateStr;
   }
 };
-
 const EventsList = () => {
-  const events = useAppStore((s) => s.events);
-  const brands = useAppStore((s) => s.brands);
-  const clients = useAppStore((s) => s.clients);
-  const operators = useAppStore((s) => s.operators);
-  const getShiftsByEvent = useAppStore((s) => s.getShiftsByEvent);
-  
+  const events = useAppStore(s => s.events);
+  const brands = useAppStore(s => s.brands);
+  const clients = useAppStore(s => s.clients);
+  const operators = useAppStore(s => s.operators);
+  const getShiftsByEvent = useAppStore(s => s.getShiftsByEvent);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<{
     startDate: Date | null;
     endDate: Date | null;
   }>({
     startDate: null,
-    endDate: null,
+    endDate: null
   });
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [brandFilter, setBrandFilter] = useState<string | null>(null);
@@ -61,17 +57,12 @@ const EventsList = () => {
       const shifts = getShiftsByEvent(event.id);
       const client = clients.find(c => c.id === event.clientId);
       const brand = brands.find(b => b.id === event.brandId);
-      
       const totalOperators = shifts.reduce((sum, s) => sum + s.operatorIds.length, 0);
       const totalAssignedHours = shifts.reduce((sum, s) => {
         const hours = calcEffectiveHours(s.startTime, s.endTime, s.pauseHours ?? 0);
-        return sum + (hours * s.operatorIds.length);
+        return sum + hours * s.operatorIds.length;
       }, 0);
-      
-      const firstShiftDate = shifts.length > 0 
-        ? shifts.sort((a, b) => a.date.localeCompare(b.date))[0].date 
-        : null;
-      
+      const firstShiftDate = shifts.length > 0 ? shifts.sort((a, b) => a.date.localeCompare(b.date))[0].date : null;
       return {
         id: event.id,
         title: event.title,
@@ -90,11 +81,10 @@ const EventsList = () => {
           activityType: s.activityType,
           role: s.role,
           pauseHours: s.pauseHours ?? 0,
-          operatorIds: s.operatorIds,
-        })),
+          operatorIds: s.operatorIds
+        }))
       };
     }).filter(ev => ev.date !== "");
-
     return flatEvents;
   }, [events, clients, brands, getShiftsByEvent]);
 
@@ -107,7 +97,6 @@ const EventsList = () => {
       filtered = filtered.filter(ev => {
         if (!ev.date) return false;
         const eventDate = new Date(ev.date + "T00:00:00");
-        
         if (dateFilter.startDate && dateFilter.endDate) {
           return eventDate >= dateFilter.startDate && eventDate <= dateFilter.endDate;
         }
@@ -142,18 +131,11 @@ const EventsList = () => {
           return 0;
       }
     });
-
     return sorted;
   }, [processedEvents, dateFilter, clientFilter, brandFilter, sortBy]);
-
   const handleToggleSelect = (eventId: string) => {
-    setSelectedEventIds(prev => 
-      prev.includes(eventId) 
-        ? prev.filter(id => id !== eventId)
-        : [...prev, eventId]
-    );
+    setSelectedEventIds(prev => prev.includes(eventId) ? prev.filter(id => id !== eventId) : [...prev, eventId]);
   };
-
   const handleSelectAll = () => {
     if (selectedEventIds.length === filteredAndSortedEvents.length) {
       setSelectedEventIds([]);
@@ -161,28 +143,22 @@ const EventsList = () => {
       setSelectedEventIds(filteredAndSortedEvents.map(ev => ev.id));
     }
   };
-
   const handleExport = () => {
     if (selectedEventIds.length === 0) {
       toast.error("Seleziona almeno un evento da esportare");
       return;
     }
-
-    const eventsToExport = filteredAndSortedEvents
-      .filter(ev => selectedEventIds.includes(ev.id))
-      .map(ev => ({
-        id: ev.id,
-        title: ev.title,
-        date: ev.date,
-        clientName: ev.clientName,
-        brandName: ev.brandName,
-        shifts: ev.shifts,
-      }));
-
+    const eventsToExport = filteredAndSortedEvents.filter(ev => selectedEventIds.includes(ev.id)).map(ev => ({
+      id: ev.id,
+      title: ev.title,
+      date: ev.date,
+      clientName: ev.clientName,
+      brandName: ev.brandName,
+      shifts: ev.shifts
+    }));
     exportEventsToExcel(eventsToExport, selectedEventIds, operators);
     toast.success(`${selectedEventIds.length} eventi esportati con successo`);
   };
-
   const handleExpandAll = () => {
     if (expandedEventIds.length === filteredAndSortedEvents.length) {
       setExpandedEventIds([]);
@@ -190,12 +166,8 @@ const EventsList = () => {
       setExpandedEventIds(filteredAndSortedEvents.map(ev => ev.id));
     }
   };
-
-  const allSelected = filteredAndSortedEvents.length > 0 && 
-    selectedEventIds.length === filteredAndSortedEvents.length;
-
-  return (
-    <main className="container py-8">
+  const allSelected = filteredAndSortedEvents.length > 0 && selectedEventIds.length === filteredAndSortedEvents.length;
+  return <main className="container py-8">
       <Helmet>
         <title>Lista Eventi | Gestionale Sicurezza</title>
         <meta name="description" content="Elenco eventi con cliente e data. Crea e gestisci eventi dell'agenzia di sicurezza." />
@@ -204,19 +176,15 @@ const EventsList = () => {
 
       <section className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">Lista Eventi</h1>
-          {selectedEventIds.length > 0 && (
-            <Badge variant="secondary" className="gap-1">
+          <h1 className="text-[#007a55] font-bold text-4xl">Lista Eventi</h1>
+          {selectedEventIds.length > 0 && <Badge variant="secondary" className="gap-1">
               {selectedEventIds.length} selezionati
-            </Badge>
-          )}
+            </Badge>}
         </div>
         <div className="flex gap-2">
-          {filteredAndSortedEvents.length > 0 && (
-            <Button variant="outline" onClick={handleExpandAll}>
+          {filteredAndSortedEvents.length > 0 && <Button variant="outline" onClick={handleExpandAll}>
               {expandedEventIds.length === filteredAndSortedEvents.length ? "Chiudi tutto" : "Espandi tutto"}
-            </Button>
-          )}
+            </Button>}
           <Button onClick={() => setCreateModalOpen(true)}>
             <Plus />
             Crea evento
@@ -224,35 +192,14 @@ const EventsList = () => {
         </div>
       </section>
 
-      <EventsFilters
-        dateFilter={dateFilter}
-        onDateFilterChange={setDateFilter}
-        clientFilter={clientFilter}
-        onClientFilterChange={setClientFilter}
-        brandFilter={brandFilter}
-        onBrandFilterChange={setBrandFilter}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
-        selectedCount={selectedEventIds.length}
-        onExport={handleExport}
-        clients={clients}
-        brands={brands}
-      />
+      <EventsFilters dateFilter={dateFilter} onDateFilterChange={setDateFilter} clientFilter={clientFilter} onClientFilterChange={setClientFilter} brandFilter={brandFilter} onBrandFilterChange={setBrandFilter} sortBy={sortBy} onSortByChange={setSortBy} selectedCount={selectedEventIds.length} onExport={handleExport} clients={clients} brands={brands} />
 
-      {filteredAndSortedEvents.length === 0 ? (
-        <section className="rounded-lg border border-border p-8 text-center text-muted-foreground">
-          {dateFilter.startDate || dateFilter.endDate || clientFilter || brandFilter
-            ? "Nessun evento trovato per i filtri selezionati."
-            : "Nessun evento programmato. Crea il primo evento."}
-        </section>
-      ) : (
-        <div className="space-y-4">
+      {filteredAndSortedEvents.length === 0 ? <section className="rounded-lg border border-border p-8 text-center text-muted-foreground">
+          {dateFilter.startDate || dateFilter.endDate || clientFilter || brandFilter ? "Nessun evento trovato per i filtri selezionati." : "Nessun evento programmato. Crea il primo evento."}
+        </section> : <div className="space-y-4">
           {/* Select all checkbox */}
           <div className="flex items-center gap-2 px-2">
-            <Checkbox
-              checked={allSelected}
-              onCheckedChange={handleSelectAll}
-            />
+            <Checkbox checked={allSelected} onCheckedChange={handleSelectAll} />
             <span className="text-sm text-muted-foreground">
               Seleziona tutti ({filteredAndSortedEvents.length})
             </span>
@@ -260,31 +207,13 @@ const EventsList = () => {
 
           {/* Event rows */}
           <div className="space-y-3">
-            {filteredAndSortedEvents.map(event => (
-              <EventRow
-                key={event.id}
-                event={event}
-                operators={operators}
-                isSelected={selectedEventIds.includes(event.id)}
-                onToggleSelect={handleToggleSelect}
-                isExpanded={expandedEventIds.includes(event.id)}
-                onToggleExpand={(id) => {
-                  setExpandedEventIds(prev =>
-                    prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]
-                  );
-                }}
-              />
-            ))}
+            {filteredAndSortedEvents.map(event => <EventRow key={event.id} event={event} operators={operators} isSelected={selectedEventIds.includes(event.id)} onToggleSelect={handleToggleSelect} isExpanded={expandedEventIds.includes(event.id)} onToggleExpand={id => {
+          setExpandedEventIds(prev => prev.includes(id) ? prev.filter(eid => eid !== id) : [...prev, id]);
+        }} />)}
           </div>
-        </div>
-      )}
+        </div>}
       
-      <CreateEventModal 
-        open={createModalOpen} 
-        onOpenChange={setCreateModalOpen} 
-      />
-    </main>
-  );
+      <CreateEventModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
+    </main>;
 };
-
 export default EventsList;
