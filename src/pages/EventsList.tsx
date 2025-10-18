@@ -51,40 +51,57 @@ const EventsList = () => {
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [expandedEventIds, setExpandedEventIds] = useState<string[]>([]);
 
-  // Processa gli eventi in una struttura flat
+  // Processa gli eventi in una struttura flat per giorno
   const processedEvents = useMemo(() => {
-    const flatEvents = events.map(event => {
+    const flatEvents: any[] = [];
+    
+    events.forEach(event => {
       const shifts = getShiftsByEvent(event.id);
       const client = clients.find(c => c.id === event.clientId);
       const brand = brands.find(b => b.id === event.brandId);
-      const totalOperators = shifts.reduce((sum, s) => sum + s.operatorIds.length, 0);
-      const totalAssignedHours = shifts.reduce((sum, s) => {
-        const hours = calcEffectiveHours(s.startTime, s.endTime, s.pauseHours ?? 0);
-        return sum + hours * s.operatorIds.length;
-      }, 0);
-      const firstShiftDate = shifts.length > 0 ? shifts.sort((a, b) => a.date.localeCompare(b.date))[0].date : null;
-      return {
-        id: event.id,
-        title: event.title,
-        clientId: event.clientId || "",
-        brandId: event.brandId || "",
-        clientName: client?.name || "—",
-        brandName: brand?.name || "",
-        date: firstShiftDate || "",
-        dateFormatted: firstShiftDate ? formatDateDDMMYY(firstShiftDate) : "—",
-        totalOperators,
-        totalAssignedHours: totalAssignedHours.toFixed(2),
-        shifts: shifts.map(s => ({
-          id: s.id,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          activityType: s.activityType,
-          role: s.role,
-          pauseHours: s.pauseHours ?? 0,
-          operatorIds: s.operatorIds
-        }))
-      };
-    }).filter(ev => ev.date !== "");
+      
+      // Raggruppa i turni per data
+      const shiftsByDate = shifts.reduce((acc, shift) => {
+        if (!acc[shift.date]) {
+          acc[shift.date] = [];
+        }
+        acc[shift.date].push(shift);
+        return acc;
+      }, {} as Record<string, typeof shifts>);
+      
+      // Crea una riga per ogni data
+      Object.entries(shiftsByDate).forEach(([date, dayShifts]) => {
+        const totalOperators = dayShifts.reduce((sum, s) => sum + s.operatorIds.length, 0);
+        const totalAssignedHours = dayShifts.reduce((sum, s) => {
+          const hours = calcEffectiveHours(s.startTime, s.endTime, s.pauseHours ?? 0);
+          return sum + hours * s.operatorIds.length;
+        }, 0);
+        
+        flatEvents.push({
+          id: `${event.id}_${date}`, // ID unico per evento+data
+          eventId: event.id, // ID originale dell'evento
+          title: event.title,
+          clientId: event.clientId || "",
+          brandId: event.brandId || "",
+          clientName: client?.name || "—",
+          brandName: brand?.name || "",
+          date: date,
+          dateFormatted: formatDateDDMMYY(date),
+          totalOperators,
+          totalAssignedHours: totalAssignedHours.toFixed(2),
+          shifts: dayShifts.map(s => ({
+            id: s.id,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            activityType: s.activityType,
+            role: s.role,
+            pauseHours: s.pauseHours ?? 0,
+            operatorIds: s.operatorIds
+          }))
+        });
+      });
+    });
+    
     return flatEvents;
   }, [events, clients, brands, getShiftsByEvent]);
 
