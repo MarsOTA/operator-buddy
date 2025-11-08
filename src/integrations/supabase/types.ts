@@ -229,6 +229,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sent_notifications: {
+        Row: {
+          id: string
+          notification_type: string
+          operator_id: string
+          sent_at: string | null
+          shift_id: string
+        }
+        Insert: {
+          id?: string
+          notification_type: string
+          operator_id: string
+          sent_at?: string | null
+          shift_id: string
+        }
+        Update: {
+          id?: string
+          notification_type?: string
+          operator_id?: string
+          sent_at?: string | null
+          shift_id?: string
+        }
+        Relationships: []
+      }
       shift_assignments: {
         Row: {
           created_at: string

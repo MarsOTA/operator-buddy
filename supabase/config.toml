@@ -1,1 +1,7 @@
 project_id = "ychhsygbvtygchoqxjgr"
+
+[functions.send-push-notification]
+verify_jwt = false
+
+[functions.check-upcoming-shifts]
+verify_jwt = false
