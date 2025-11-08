@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import OperatorDashboard from "@/components/OperatorDashboard";
 import { useSupabaseStore } from "@/hooks/useSupabaseStore";
 import { Helmet } from "react-helmet-async";
+import { NotificationTestPanel } from "@/components/admin/NotificationTestPanel";
 
 const Index = () => {
   const { loading, operatorData } = useSupabaseStore();
@@ -122,6 +123,11 @@ const Index = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Notification Test Panel */}
+          <div className="mt-8">
+            <NotificationTestPanel />
           </div>
 
           {/* Contact Section */}
