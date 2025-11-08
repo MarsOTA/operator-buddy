@@ -129,19 +129,31 @@ export const NotificationTestPanel = () => {
 
         <div className="space-y-2">
           <Label htmlFor="event">Evento (opzionale)</Label>
-          <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-            <SelectTrigger id="event">
-              <SelectValue placeholder="Nessun evento selezionato" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Nessun evento</SelectItem>
-              {events.map((event) => (
-                <SelectItem key={event.id} value={event.id}>
-                  {event.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+              <SelectTrigger id="event" className="flex-1">
+                <SelectValue placeholder="Nessun evento selezionato" />
+              </SelectTrigger>
+              <SelectContent>
+                {events.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedEvent && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setSelectedEvent('')}
+                title="Rimuovi evento"
+              >
+                ×
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">
